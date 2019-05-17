@@ -3,7 +3,7 @@ const app = express();
 const fs = require('fs');
 const os = require('os');
 
-function main(isHttps) {
+function main(isHttp,isHttps) {
   //CHONG TAN CONG DDDOS
   //ngan chan truy cap ddos tra ket qua cho user neu truy cap tan suat lon 
   app.use(require('./ddos/ddos-config').express('ip', 'path'));
@@ -32,6 +32,20 @@ function main(isHttps) {
   //Error handle ALLWAYS keep last route even all
   app.use(require('./handlers/error-handler').errors);
 
+  if (isHttp) {
+    // For http
+    const httpServer = require('http').createServer(app);
+    const portHttp = process.env.PORT || isHttp;
+    httpServer.listen(portHttp, () => {
+      console.log("Server HTTP (" + os.platform() + "; " + os.arch() + ") is started with PORT: "
+        + portHttp
+        + "\n tempdir: " + os.tmpdir()
+        + "\n " + new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+      );
+    });
+
+  }
+
   if (isHttps) {
     // For https
     const privateKey = fs.readFileSync('cert/api-private-key.pem', 'utf8');
@@ -56,4 +70,4 @@ function main(isHttps) {
 //=false or port number >1000
 const isHttps = 9237; //crm
 
-main(isHttps);
+main(false,isHttps);

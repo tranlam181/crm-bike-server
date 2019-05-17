@@ -1,6 +1,11 @@
-
+"use strict"
 /**
- * file nay la cac thu tuc tao bang va du lieu mau tu excel vao db
+ * ver 1.1
+ * cuongdq 17/05/2019
+ * create [UNIQUE] INDEX idx_tablename_1 on tablename(colname)
+ * 
+ * 1.0 
+ * create sqlite from excel
  * 
  */
 
@@ -30,12 +35,12 @@ class HandlerExcel2SqLite {
                     this.initTable(excelFileInput);
                     console.log('Database '+ databaseFile + ' ready!');
                 }else{
-                    throw 'No Database Sqlite' + databaseFile
+                    console.log( 'No Database Sqlite'+ databaseFile)
                 }
             }, 1000);
 
         }else{
-            throw 'No Database Setting xlsx ' + excelFileInput
+            console.log('No Database Setting xlsx ' + excelFileInput)
         }
     }
 
@@ -66,6 +71,8 @@ class HandlerExcel2SqLite {
                             let tableJson={};
                             tableJson.name = el;
                             tableJson.cols = [];
+                            let createIndexs = [];
+                            let idx = 0;
                             table.forEach(e=>{
                                 let col = {};
                                 col.name = e.field_name;
@@ -73,17 +80,33 @@ class HandlerExcel2SqLite {
                                 col.option_key = e.options;
                                 col.description = e.description;
                                 tableJson.cols.push(col);
+                                //cau lenh de tao index
+                                if (e.index==='UNIQUE'||e.index==='INDEX'){
+                                    createIndexs.push("CREATE "+(e.index==="UNIQUE"?"UNIQUE":"")+"\
+                                                          INDEX idx_"+el+"_"+(++idx)+"\
+                                                          ON "+el+"("+e.field_name+")"
+                                    );
+                                }
                             })
                             //console.log(tableJson);
                             try{
-                                await db.createTable(tableJson)
+                                await db.createTable(tableJson);
+                                console.log('table created: ',el);
+                                //tao luon index
+                                for (let i=0;i<createIndexs.length;i++){
+                                   //let exc = 
+                                   await db.runSql(createIndexs[i]);
+                                   //console.log(exc);
+                                   console.log('index created: ',"idx_"+el+"_"+i);
+                                }
+
                             }catch(err){
                                 console.log(err)
                             }
                         }
                     })
 
-                    console.log('table created: ',distinct_table_name);
+                    //console.log('table created: ',distinct_table_name);
     
                     setTimeout(()=>{
                         this.initData(distinct_table_name, excelFileInput)
@@ -96,15 +119,13 @@ class HandlerExcel2SqLite {
                     },1000)
 
                 }
-                
-
             });
         } catch (e){
             console.log("Corupted excel file" + e);
         }
         
-    } 
-    
+    }
+
     initData(tables,excelFileInput){
         return new Promise((resolve,reject)=>{
             try{

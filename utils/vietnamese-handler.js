@@ -1,12 +1,16 @@
 "use strict"
 
 /**
- * object nay se doc so thanh tien vnd
- * viet hoa chu cai dau tung word trong string
- * tao tree cho array
- * 
+ * version 1.4
+ * 06/05/2019 - cuongdq
+ *
+ * doc so tien tieng viet
+ * chuyen doi chu hoa Ho Va Ten
+ * Chuyen doi string to Directory Base64
+ * Chuyen doi string Ho Va Ten sang first_name and last_name
+ *
  * De su dung:
- * import Converter from '../utils/converter-2-vietnamese'
+ * import Converter from '../utils/vietnamese-handler'
  * 
  */
 

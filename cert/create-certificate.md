@@ -30,6 +30,8 @@ ex:
 openssl x509 -req -days 365 -in ./cert/my-com-req-cert.csr -signkey ./cert/my-private-public-key.pem -out ./cert/my-certificate.pem
 
 #Mẫu để tạo
-openssl genrsa -out ./cert/my-private-public-key.pem 4096
-openssl req -new -key ./cert/privatekey.pem -out ./cert/my-com-req-cert.csr
-openssl x509 -req -days 365 -in ./cert/my-com-req-cert.csr -signkey ./cert/my-private-public-key.pem -out ./cert/my-certificate.pem
+openssl genrsa -out ./cert/api-private-key.pem 4096
+
+openssl req -new -key ./cert/api-private-key.pem -out ./cert/api-req-cert.csr
+
+openssl x509 -req -days 365 -in ./cert/api-req-cert.csr -signkey ./cert/api-private-key.pem -out ./cert/api-certificate.pem

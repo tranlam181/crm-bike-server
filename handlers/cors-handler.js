@@ -1,6 +1,9 @@
 
 "use strict"
-
+/**
+ * ver 1.1
+ * log --> origin + url
+ */
 const url = require('url');
 
 //chi cho phep cac domain chua cac thong tin nhu sau moi duoc phep truy cap

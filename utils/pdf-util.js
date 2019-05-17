@@ -1,5 +1,10 @@
 "use strict"
 
+/**
+ * chuyen doi ma tran tao thanh pdf file
+ * version 1.0
+ */
+
 var arrObject = require('./array-object');
 
 const PDFDocument = require('pdfkit');
@@ -126,8 +131,6 @@ var createPdf = (inputConfig, fileName) => {
 
     doc.registerFont('Time-new-roman-utf8', './fonts/times.ttf');
     doc.font('Time-new-roman-utf8');
-
-    
     
     pagesPrint.forEach((page, idx) => {
         

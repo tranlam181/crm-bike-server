@@ -1,8 +1,8 @@
-
 "use strict"
-
 /**
- * doi tuong sqlite-dao - cuong.dq version 3.0 
+ * version 3.1 
+ * doi tuong sqlite-dao - cuong.dq 
+ * 
  * repaired 20190105: col.value !=undefined && !=null 
  */
 const sqlite3 = require('sqlite3').verbose();
@@ -12,13 +12,12 @@ class SQLiteDAO {
   constructor(dbFilePath) {
     this.db = new sqlite3.Database(dbFilePath, (err) => {
       if (err) {
-        console.error('Could NOT connect to database' + dbFilePath, err);
+        console.error('Could NOT connect to database ' + dbFilePath, err);
       } else {
         console.log('Connected to database ' + dbFilePath);
       }
     })
   }
-
 
   /**
    * 
