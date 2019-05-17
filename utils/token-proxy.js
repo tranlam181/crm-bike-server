@@ -1,23 +1,76 @@
 "use strict"
 
 /**
- * proxy-handler:
- *  
- * verifyProxyToken: verifyProxyToken,
-    authorizeToken: authorizeToken,
+ * ver 1.0
+ * cuongdq create 17/05/2019
+ * 
+ * Các máy chủ kế thừa máy chủ API chỉ sử dụng utils này để xác minh token
+ * không cần đưa thành phần utils/token-handler.js vào 
+ * và cũng không chần sử dụng handler/proxy-handler.js nữa
+ * 
  */
 
-const jwt = require('jsonwebtoken');
-const proxy = require('request'); //doi tuong yeu cau proxy truy van POST/GET
-const authServer = 'https://c3.mobifone.vn/api'
+//khai báo máy chủ xác minh ở đâu? như của facebook, google, ....
+const authServer = 'https://c3.mobifone.vn/api';
 
-const tokenHandler = require('../utils/token-handler')
+
+const jwt = require('jsonwebtoken');
+const url = require('url');
+
+const proxy = require('request'); //doi tuong yeu cau proxy truy van POST/GET
 
 var tokenSession = []; //luu lai session lam viec
+
+/**
+ * input: token
+ * output: user_info
+ * @param {*} token 
+ */
+var getInfoFromToken = (token)=>{
+  let userInfo;
+  try{
+    userInfo = jwt.decode(token);
+  }catch(e){}
+  return userInfo; 
+}
+
+/**
+ * input:  GET/POST
+ * return: req.token
+ * @param {*} req 
+ * @param {*} res 
+ * @param {*} next 
+ */
+var getToken = (req, res, next)=> {
+  let token = req.headers['x-access-token'] || req.headers['authorization'];
+   if (!token) token = url.parse(req.url, true, false).query.token;
+   if (!token) token = req.json_data?req.json_data.token:''; //lay them tu json_data post
+   req.token = req.token?req.token:token; // uu tien token truyen trong json gan truoc do
+   if (req.token) {
+     req.token = req.token.startsWith('Bearer ')?req.token.slice(7):req.token;      
+     next();
+   } else {
+     res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+     res.end(JSON.stringify({code:403, message:'token-handler: getToken: Auth token is not supplied or you are unauthorized!'}));
+   }
+ }
+
+var getTokenNext = (req, res, next)=> {
+  let token = req.headers['x-access-token'] || req.headers['authorization'];
+   if (!token) token = url.parse(req.url, true, false).query.token;
+   if (!token) token = req.json_data?req.json_data.token:''; //lay them tu json_data post
+   req.token = req.token?req.token:token; // uu tien token truyen trong json gan truoc do
+   if (req.token) {
+     req.token = req.token.startsWith('Bearer ')?req.token.slice(7):req.token;      
+     next();
+   } else {
+     next();
+   }
+ }
 //chi verify --> auth 1 lan --> co thoi gian hieu luc va het hieu luc
 //khi do chi can verify expires la duoc
 const verifyExpire = (req)=>{
-    let userInfo = tokenHandler.getInfoFromToken(req.token);
+    let userInfo = getInfoFromToken(req.token);
     if (userInfo){
         if (userInfo.exp>(new Date().getTime()/1000)) return true;
     }
@@ -37,8 +90,6 @@ const verifyProxyToken = (req, res, next)=>{
 
             let aliveToken = tokenSession.find(x=>x.token===req.token)
 
-            //console.log('aliveToken',aliveToken)
-
             if (aliveToken && verifyExpire(req)){
                 //console.log('user_info verifyExpire true: ',req.user_info);
                 aliveToken.last_time = new Date().getTime();
@@ -57,8 +108,7 @@ const verifyProxyToken = (req, res, next)=>{
                             reject(error);
                         }
                         if (res.statusCode == 200&&body.status&&body.user_info) {
-                            //console.log('user_info',body); //tra ve user_info va trang thai =1
-                            //chuyen doi body --> luu lai
+
                             tokenSession.push({
                                 create_time: new Date().getTime(),
                                 token: req.token,
@@ -72,7 +122,7 @@ const verifyProxyToken = (req, res, next)=>{
             }
 
         }).then(tokenData => {
-            //console.log('tokenData.status', tokenData.status, tokenData.user_info);
+            
             if (tokenData.status){
                 req.user = tokenData.user_info;  
                 next();              
@@ -151,7 +201,7 @@ const verifyProxyTokenNext = (req, res, next)=>{
     }
   }
 
-const authorizeToken = (req, res, next) => {
+const getVerifiedToken = (req, res, next) => {
     if (req.user){
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({status:true,message:'token valid',user_info: req.user, token: req.token}));
@@ -163,7 +213,17 @@ const authorizeToken = (req, res, next) => {
 
 
 module.exports = {
-    verifyProxyTokenNext: verifyProxyTokenNext,
-    verifyProxyToken: verifyProxyToken,
-    authorizeToken: authorizeToken,
+  //Chuyển đổi thông tin token ra tường minh
+  getInfoFromToken: getInfoFromToken,
+
+  //Lấy token ở các loại dữ liệu truyền lên
+  getToken: getToken,         //tra ve err page neu khong co token  
+  getTokenNext: getTokenNext, //tra ve req.token next() neu khong co
+  
+  //Xác minh token có hợp lệ hay không
+  verifyProxyToken: verifyProxyToken, //tra ve err page neu xac thuc khong thanh cong
+  verifyProxyTokenNext: verifyProxyTokenNext, //tra ve next() neu khong co
+
+  //Trả thông tin token đã được xác minh ở trên
+  getVerifiedToken: getVerifiedToken
 };

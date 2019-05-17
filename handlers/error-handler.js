@@ -9,8 +9,6 @@ class ErrorHandler {
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end('<h1>Trang test : ' + req.clientIp + '</h1><br>' + path);
         }catch(e){
-            //console.log(e);
-            //ham nem loi ve cuoi cung
             throw 'Loi test gui!:' + e;
         }
     }
@@ -26,6 +24,4 @@ class ErrorHandler {
     }
   }
   
-  module.exports = {
-    ErrorHandler: new ErrorHandler() 
-  };
+  module.exports =  new ErrorHandler()

@@ -3,8 +3,7 @@
 const router = require('express').Router();
 
 const postHandler = require('../utils/post-handler');
-const tokenHandler = require('../utils/token-handler');
-const proxyHandler = require('../handlers/proxy-handler');
+const tokenHandler = require('../utils/token-proxy');
 const pdfHandler = require('../handlers/pdf-handler');
 
 const resourceHandler = require('../handlers/resource-handler');
@@ -16,13 +15,13 @@ let handlers = resourceHandler.ResourceHandler;
 const adminHandller = require("../handlers/admin-handler").Handler;
 router.get('/get-roles'
 , tokenHandler.getTokenNext
-, proxyHandler.verifyProxyTokenNext
+, tokenHandler.verifyProxyTokenNext
 , adminHandller.getRoles
 );
 
 router.get('/get-menu'
 , tokenHandler.getTokenNext
-, proxyHandler.verifyProxyTokenNext
+, tokenHandler.verifyProxyTokenNext
 , adminHandller.getUserMenu
 );
 ///
@@ -47,7 +46,7 @@ router.get('/matrix-a5', pdfHandler.getMatrixA5);
  */
 router.get('/json-parameters'
     , tokenHandler.getToken
-    , proxyHandler.verifyProxyToken
+    , tokenHandler.verifyProxyToken
     , handlers.getParameters
 ); //ok
 
@@ -56,7 +55,7 @@ router.get('/json-parameters'
  */
 router.get('/json-customers'
     , tokenHandler.getToken
-    , proxyHandler.verifyProxyToken
+    , tokenHandler.verifyProxyToken
     , handlers.getCustomers
 );   //ok
 
@@ -65,7 +64,7 @@ router.get('/json-customers'
  */
 router.get('/json-bill-cycles'
     , tokenHandler.getToken
-    , proxyHandler.verifyProxyToken
+    , tokenHandler.verifyProxyToken
     , handlers.getBillCycles
 );   //ok
 
@@ -81,7 +80,7 @@ router.get('/json-prices'
  */
 router.post('/create-invoices'
 , tokenHandler.getToken
-, proxyHandler.verifyProxyToken
+, tokenHandler.verifyProxyToken
 , postHandler.jsonProcess //lay json_data
 , handlers.createInvoices);
 
@@ -89,7 +88,7 @@ router.post('/create-invoices'
 //tra ket qua in hoa don in don le, in nhom, in het, co/khong backgroud kieu json
 router.get('/json-invoices/*'
     , tokenHandler.getToken
-    , proxyHandler.verifyProxyToken
+    , tokenHandler.verifyProxyToken
     , handlers.getInvoices
 );   //OK
 
@@ -99,14 +98,14 @@ router.get('/json-invoices/*'
  */
 router.get('/pdf-invoices/*'
     , tokenHandler.getToken
-    , proxyHandler.verifyProxyToken
+    , tokenHandler.verifyProxyToken
     , handlers.getPdfInvoices); //OK
 
 
 router.post('/edit-customer' //chi co user co quyen sua thi moi thuc hien
     , postHandler.jsonProcess //lay json_data
     , tokenHandler.getToken   //req.token
-    , proxyHandler.verifyProxyToken //req.user
+    , tokenHandler.verifyProxyToken //req.user
     , adminHandller.setFunctionFromPath //thiet lap chuc nang tu pathName
     , adminHandller.checkFunctionRole   //kiem tra quyen co khong de cho phep
     , handlers.editCustomer    //ghi xuong csdl

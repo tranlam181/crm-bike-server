@@ -28,8 +28,9 @@ db/excel/~$*.*
 temp/
 
 #ignore log file service
-#logs/*.log
+logs/*.log
 service.pid
+cert/*.pem
 
 #phai day www len server cho ionic hoat dong
 www/

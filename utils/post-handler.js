@@ -1,7 +1,20 @@
 "use strict"
 
-const fs = require('fs');
+/**
+ * version 1.0
+ * cuongdq
+ * create 01/12/2018
+ * Thực hiện nhận dữ liệu post lên từ JsonData hoặc từ FormData
+ * Lưu file vào đường dẫn định trước qua biến dirUpload
+ * và trả kết quả cho req.json_data hoặc req.form_data
+ * 
+ * các đường dẫn lưu file sẽ sắp xếp theo tháng/ngày /giờ(nếu cần)
+ * 
+ */
+//đường dẫn lưu file khi nhận FormData ở đâu?
 const dirUpload = 'upload_files';
+
+const fs = require('fs');
 const systempath = require('path');
 const mime = require('mime-types');
 const formidable = require('formidable');
