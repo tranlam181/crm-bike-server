@@ -1,0 +1,67 @@
+<ion-header>
+  <ion-navbar>
+
+    <ion-buttons right *ngIf="!isSearch" start>
+      <button ion-button icon-only color="royal" (click)="goSearch()">
+        <ion-icon name="search"></ion-icon>
+      </button>
+      <button ion-button icon-only color="primary" (click)="newCustomter()">
+        <ion-icon name="person-add"></ion-icon>
+      </button>
+    </ion-buttons>
+
+
+    <ion-searchbar *ngIf="isSearch" placeholder="Tìm theo mã/tên khách hàng/khu vực/người quản lý hoặc số điện thoại"
+      [(ngModel)]="searchString" [showCancelButton]="shouldShowCancel" (ionInput)="onInput($event)"
+      (keyup.enter)="searchEnter()" (keyup.esc)="searchEnter()" start>
+    </ion-searchbar>
+
+    <ion-title *ngIf="!isSearch">CUSTOMER - Khách hàng</ion-title>
+
+  </ion-navbar>
+</ion-header>
+
+<ion-content padding>
+
+  <ion-list>
+
+    <ion-item-sliding #slidingItem class="background-list" *ngFor="let customer of customers">
+
+      <ion-item #item class="background-item" tappable (click)="onClickItem(customer)">
+        <ion-avatar item-start *ngIf="customer.image">
+          <img [src]="customer.image">
+        </ion-avatar>
+        <h2>{{customer.cust_id}} - {{customer.full_name}}</h2>
+        <p>{{customer.area}} ({{customer.staff}})</p>
+        <ion-note>{{customer.cust_type}} {{customer.charge}} </ion-note>
+      </ion-item>
+
+      <ion-item-options>
+        <button ion-button color="secondary" (click)="onClickDetails(slidingItem, customer, 'EDIT')">
+          <ion-icon name="print"></ion-icon>
+          Chỉnh sửa
+        </button>
+        <button ion-button color="danger" (click)="onClickDetails(slidingItem, customer, 'DELETE')">
+          <ion-icon name="list-box"></ion-icon>
+          Xóa
+        </button>
+      </ion-item-options>
+
+      <ion-item-options side="left">
+        <button ion-button color="primary" expandable (click)="onClickDetails(slidingItem, customer, 'RELOAD')">
+          <ion-icon name="checkmark"></ion-icon>
+          <div>Reload</div>
+          <ion-spinner id="archive-spinner"></ion-spinner>
+        </button>
+      </ion-item-options>
+
+    </ion-item-sliding>
+
+  </ion-list>
+
+  <ion-infinite-scroll (ionInfinite)="doInfinite($event,'DOWN')">
+    <ion-infinite-scroll-content loadingSpinner="bubbles" loadingText="Load dữ liệu cũ hơn...">
+    </ion-infinite-scroll-content>
+  </ion-infinite-scroll>
+
+</ion-content>

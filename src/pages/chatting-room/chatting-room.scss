@@ -1,0 +1,63 @@
+page-chatting-room {
+
+
+    .card-background-parent {
+        position: relative;
+        text-align: right;
+    }
+
+    .card-background-parent .avatar-height{
+        background-size: cover;
+        background-position: center; 
+        height: 50px;
+        width: 50px;
+        border-radius: 30%;
+    }
+
+    .background-list {
+		background-color: #bd1d1d;
+    }
+    
+    .background-item {
+		background-color: #2b27e4;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        border-radius: 0.8em;
+        padding: 2px;
+	}
+
+    .message {
+        padding: 5px !important;
+        margin: 0px !important;
+        transition: all 250ms ease-in-out !important;
+        border-radius: 10px !important;
+        margin-bottom: 4px !important;
+    }
+    
+    .my_message {
+        background: #dff4f8 !important;
+        color: #7425f1 !important;
+    }
+    .other_message {
+        background: #e0e0e0 !important;
+        color: #0c056b !important;
+    }
+    .nick-name{
+        float: left;
+        color: #650572;
+        font-size: large;
+    }
+   
+    .text-message{
+        color: #0c056b
+    }
+    
+    .time {
+        color: #f15c82;
+        float: right;
+        font-size: small;
+    }
+
+    .message_row {
+        background-color: #fff;
+    }
+}

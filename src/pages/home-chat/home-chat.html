@@ -1,0 +1,119 @@
+<ion-header>
+  <ion-navbar>
+      <ion-buttons end *ngIf="!isSearch && chatManager?.search_bar">
+          <button ion-button icon-only color="primary" (click)="goSearch()">
+              <ion-icon name="search"></ion-icon>
+          </button>
+      </ion-buttons>
+
+      <ion-searchbar start *ngIf="isSearch && chatManager?.search_bar" placeholder="{{chatManager?.search_bar.hint}}" [(ngModel)]="searchString"
+      [showCancelButton]="shouldShowCancel" (ionInput)="onInput($event)" (keyup.enter)="searchEnter()"
+      (keyup.esc)="searchEnter()">
+      </ion-searchbar>
+      
+      <ion-title *ngIf="!isSearch">{{chatManager?.title}}</ion-title>
+
+      <ion-buttons end *ngFor="let btn of chatManager?.buttons">
+          <button *ngIf="!isSearch" class="badge-background" ion-button icon-only color="{{btn.color}}" (click)="onClickHeader(btn)">
+              <ion-icon name="{{btn.icon}}"></ion-icon>
+              <ion-badge class="badge-alert" color="danger" *ngIf="btn.alerts">{{ (btn.alerts?.length>99?'99+':btn.alerts?.length) }}</ion-badge>
+          </button>
+      </ion-buttons>
+  </ion-navbar>
+</ion-header>
+
+<ion-content class="list-avatar-page">
+
+    <ion-list>
+
+        <ion-item-sliding #slidingItem class="background-list" *ngFor="let socket of mySocket.sockets; let idx = index">
+            
+                <ion-item *ngIf="socket!==mySocket.socket_id" #item class="background-item" tappable (click)="onClickItemPrivate(socket)">
+                    <ion-avatar item-start>
+                        <img *ngIf="contacts[mySocket?.user?.username]?.avatar" [src]="contacts[mySocket?.user?.username]?.avatar">
+                        <img *ngIf="!contacts[mySocket?.user?.username]?.avatar" src="assets/imgs/no-image-go.jpg">
+                    </ion-avatar>
+                    <ion-title >{{contacts[mySocket?.user?.username]?.fullname?contacts[mySocket?.user?.username]?.fullname:mySocket?.user?.username}}</ion-title>
+                    <p text-wrap>{{mySocket?.users[socket]?.device}}</p>
+                    <p>{{mySocket?.users[socket]?.ip}}</p>
+                    <p text-wrap>{{mySocket?.users[socket]?.location?.address}}</p>
+                    <ion-note item-end>
+                        {{mySocket?.users[socket]?.time | timeAgo}}
+                        <p style="text-align: right;" *ngIf="unreadMessages[socket]">
+                            <ion-badge color="danger">{{ unreadMessages[socket]?.length }}</ion-badge>
+                        </p>
+                    </ion-note>
+                </ion-item>
+    
+                <ion-item-options *ngIf="socket!==mySocket.socket_id">
+                    <button ion-button color="bg-blue" (click)="onClickDetails(slidingItem, room, 1)">
+                        <ion-icon name="ios-arrow-dropup"></ion-icon>
+                        Pin
+                    </button>
+                    <button ion-button color="secondary" (click)="onClickDetails(slidingItem, room, 2)">
+                        <ion-icon name="volume-off"></ion-icon>
+                        Mute
+                    </button>
+                    <button ion-button color="danger" (click)="onClickDetails(slidingItem, room, 3)">
+                        <ion-icon name="trash"></ion-icon>
+                        Delete
+                    </button>
+                </ion-item-options>
+    
+                <ion-item-options *ngIf="socket!==mySocket.socket_id" side="left">
+                    <button ion-button color="primary" expandable (click)="onClickDetails(slidingItem, room, 4)">
+                        <ion-icon name="checkmark"></ion-icon>
+                        <div>Read</div>
+                        <ion-spinner id="archive-spinner"></ion-spinner>
+                    </button>
+                </ion-item-options>
+
+        </ion-item-sliding>
+
+        <ion-item-sliding #slidingItem class="background-list" *ngFor="let room of chatRooms">
+            
+                <ion-item #item class="background-item" tappable (click)="onClickItem(room)">
+                    <ion-avatar item-start *ngIf="room?.avatar">
+                        <img [src]="room?.avatar">
+                    </ion-avatar>
+                    <ion-title>{{room?.name}}</ion-title>
+                    <p *ngIf="unreadMessages[room.id]?.length>0">{{unreadMessages[room.id][unreadMessages[room.id].length-1]?.text}}</p>
+                    <ion-note item-end>
+                        <p>
+                            {{room?.type}}
+                        </p>
+                        {{(unreadMessages[room.id]?.length>0?unreadMessages[room.id][unreadMessages[room.id].length-1]?.created:room?.time) | timeAgo}}
+                        <p style="text-align: right;" *ngIf="unreadMessages[room.id]">
+                            <ion-badge color="danger">{{ unreadMessages[room.id]?.length }}</ion-badge>
+                        </p>
+                    </ion-note>
+                </ion-item>
+    
+                <ion-item-options>
+                    <button ion-button color="bg-blue" (click)="onClickDetails(slidingItem, room, 1)">
+                        <ion-icon name="ios-arrow-dropup"></ion-icon>
+                        Pin
+                    </button>
+                    <button ion-button color="secondary" (click)="onClickDetails(slidingItem, room, 2)">
+                        <ion-icon name="volume-off"></ion-icon>
+                        Mute
+                    </button>
+                    <button ion-button color="danger" (click)="onClickDetails(slidingItem, room, 3)">
+                        <ion-icon name="trash"></ion-icon>
+                        Delete
+                    </button>
+                </ion-item-options>
+    
+                <ion-item-options side="left">
+                    <button ion-button color="primary" expandable (click)="onClickDetails(slidingItem, room, 4)">
+                        <ion-icon name="checkmark"></ion-icon>
+                        <div>Read</div>
+                        <ion-spinner id="archive-spinner"></ion-spinner>
+                    </button>
+                </ion-item-options>
+
+        </ion-item-sliding>
+
+    </ion-list>
+
+</ion-content>

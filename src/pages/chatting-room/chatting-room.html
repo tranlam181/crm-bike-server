@@ -1,0 +1,65 @@
+<ion-header>
+  <ion-navbar>
+      <ion-buttons end *ngIf="!isSearch && chatManager?.search_bar">
+          <button ion-button icon-only color="primary" (click)="goSearch()">
+              <ion-icon name="search"></ion-icon>
+          </button>
+      </ion-buttons>
+
+      <ion-searchbar start *ngIf="isSearch && chatManager?.search_bar" placeholder="{{chatManager?.search_bar.hint}}" [(ngModel)]="searchString"
+      [showCancelButton]="shouldShowCancel" (ionInput)="onInput($event)" (keyup.enter)="searchEnter()"
+      (keyup.esc)="searchEnter()">
+      </ion-searchbar>
+
+        <ion-title *ngIf="!isSearch" tappable >{{chatManager?.title}}
+            <ion-icon name="ios-arrow-forward"></ion-icon>
+        </ion-title>
+        
+      <ion-buttons end *ngFor="let btn of chatManager?.buttons">
+          <button *ngIf="!isSearch" class="badge-background" ion-button icon-only color="{{btn.color}}" (click)="onClickHeader(btn)">
+              <ion-icon name="{{btn.icon}}"></ion-icon>
+              <ion-badge class="badge-alert" color="danger" *ngIf="btn.alerts">{{ (btn.alerts?.length>99?'99+':btn.alerts?.length) }}</ion-badge>
+          </button>
+      </ion-buttons>
+  </ion-navbar>
+</ion-header>
+
+<ion-content class="list-avatar-page" #contentMessages>
+    <ion-grid>
+        <ion-row *ngFor="let message of messages">
+            <ion-col col-2 *ngIf="message?.sender_id !== mySocket?.user?.username">
+                <div class="card-background-parent">
+                    <div 
+                    *ngIf="contacts[message?.sender?.username]?.avatar" 
+                    class="avatar-height" 
+                    [style.background-image]="'url('+contacts[message?.sender?.username]?.avatar+')'">
+                    </div>
+                </div>
+            </ion-col>
+            <ion-col class="message other_message" col-10 *ngIf="message?.sender_id !== mySocket?.user?.username">
+                <p text-wrap>{{ message?.text }}</p>
+                <ion-note class="time">{{message?.created | timeAgo}}</ion-note>
+            </ion-col>
+        
+            <ion-col col-11 class="message my_message" *ngIf="message?.sender_id === mySocket?.user?.username">
+                <p text-wrap>{{ message?.text }}</p>
+                <ion-note class="time">{{message?.created | timeAgo}}</ion-note>
+            </ion-col>
+
+        </ion-row>
+    </ion-grid>
+</ion-content>
+<ion-footer>
+    <ion-toolbar>
+        <ion-row class="message_row">
+        <ion-col col-11>
+            <ion-item no-lines>
+            <ion-textarea rows="1" placeholder="Gõ nội dung tin nhắn cần gửi" [(ngModel)]="message"  (keyup)="onKeyup($event)" (keydown)="onKeydown($event)" autosize></ion-textarea>
+            </ion-item>
+        </ion-col>
+        <ion-col col-1>
+            <ion-icon name="share-alt" tappable (click)="sendMessage()"></ion-icon>
+        </ion-col>
+        </ion-row>
+    </ion-toolbar>
+</ion-footer>
