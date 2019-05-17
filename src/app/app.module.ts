@@ -76,6 +76,9 @@ import { ApiAutoCompleteService } from '../services/apiAutoCompleteService';
 import { DynamicChartPage } from '../pages/dynamic-chart/dynamic-chart';
 import { NewlinePipe } from '../pipes/new-line';
 import { LinkifyPipe } from '../pipes/linkify';
+import { InvoicePage } from '../pages/invoice/invoice';
+import { CustomerPage } from '../pages/customer/customer';
+import { ParametersPage } from '../pages/parameters/parameters';
 
 @NgModule({
   declarations: [
@@ -114,7 +117,10 @@ import { LinkifyPipe } from '../pipes/linkify';
     FriendsPage,
     ChattingPrivatePage,
     ChattingRoomPage,
-    ReportPage
+    ReportPage,
+    InvoicePage,
+    CustomerPage,
+    ParametersPage
   ],
   imports: [
     BrowserModule,
@@ -157,7 +163,10 @@ import { LinkifyPipe } from '../pipes/linkify';
     FriendsPage,
     ChattingPrivatePage,
     ChattingRoomPage,
-    ReportPage
+    ReportPage,
+    InvoicePage,
+    CustomerPage,
+    ParametersPage
   ],
   providers: [
     StatusBar,
