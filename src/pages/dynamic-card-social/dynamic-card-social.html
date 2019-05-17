@@ -6,8 +6,12 @@
             </button>
         </ion-buttons>
 
-        <ion-searchbar start *ngIf="isSearch && dynamicCards?.search_bar" placeholder="{{dynamicCards?.search_bar.hint}}" [(ngModel)]="searchString"
-        [showCancelButton]="shouldShowCancel" (ionInput)="onInput($event)" (keyup.enter)="searchEnter()"
+        <ion-searchbar start *ngIf="isSearch && dynamicCards?.search_bar" 
+        placeholder="{{dynamicCards?.search_bar.hint}}" 
+        [(ngModel)]="searchString"
+        [showCancelButton]="shouldShowCancel" 
+        (ionInput)="onInput($event)" 
+        (keyup.enter)="searchEnter()"
         (keyup.esc)="searchEnter()">
         </ion-searchbar>
         

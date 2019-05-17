@@ -211,7 +211,7 @@ export class FriendsPage {
     let username = this.searchString&&this.searchString.indexOf('0')===0?this.searchString.slice(1):this.searchString;
     //console.log('tim user theo username',username);
     this.searchString = "";
-    this.apiAuth.postDynamicForm(ApiStorageService.authenticationServer+"/ext-auth/post-users-info?",{username:username},true)
+    this.apiAuth.postDynamicForm(ApiStorageService.authServer+"/ext-auth/post-users-info?",{username:username},true)
     .then(async data=>{
       if (data
         &&data.status

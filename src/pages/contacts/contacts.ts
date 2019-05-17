@@ -157,8 +157,8 @@ export class ContactsPage {
     ];
 
     try {
-      this.prefix_change = await this.apiAuth.getDynamicUrl(ApiStorageService.authenticationServer + "/ext-public/vn-prefix-change");
-      this.vn_prefix_code = await this.apiAuth.getDynamicUrl(ApiStorageService.authenticationServer + "/ext-public/vn-net-code");
+      this.prefix_change = await this.apiAuth.getDynamicUrl(ApiStorageService.authServer + "/ext-public/vn-prefix-change");
+      this.vn_prefix_code = await this.apiAuth.getDynamicUrl(ApiStorageService.authServer + "/ext-public/vn-net-code");
     } catch (e) { }
 
     //doc tu dia len, neu co thi liet ke ra luon
@@ -703,7 +703,7 @@ export class ContactsPage {
       });
       loading.present();
 
-      this.apiAuth.getDynamicUrl(ApiStorageService.authenticationServer + "/ext-auth/get-your-contacts", true)
+      this.apiAuth.getDynamicUrl(ApiStorageService.authServer + "/ext-auth/get-your-contacts", true)
         .then(res => {
           //console.log('ket qua res', res);
           if (res.status === 1 && res.result && res.result.length > 0) {
@@ -725,7 +725,7 @@ export class ContactsPage {
 
   saveContacts2Server(contacts) {
     //luu danh ba len may chu
-    this.apiAuth.postDynamicForm(ApiStorageService.authenticationServer + "/ext-auth/save-your-contacts", contacts, true)
+    this.apiAuth.postDynamicForm(ApiStorageService.authServer + "/ext-auth/save-your-contacts", contacts, true)
       .then(res => {
 
         this.toastCtrl.create({

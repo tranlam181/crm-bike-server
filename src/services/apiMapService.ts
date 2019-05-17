@@ -5,7 +5,7 @@ import { ApiStorageService } from './apiStorageService';
 
 @Injectable()
 export class ApiMapService {
-    GOOGLE_API_KEY = 'AIzaSyDBxMizhomgbDZ9ljbf9-mY_Omuo0heCig';
+    
     WEATHER_API_KEY = '22bc862e9465e98d1c74b7351cab36ef';
     GOOGLE_POINTS_ENDCODER_DEFAULT = 1E5;
 
@@ -27,13 +27,7 @@ export class ApiMapService {
         light:"#B1B1B1",
         brown:"#101010"
     }
-    /* 
-    urlLatLng ='https://maps.googleapis.com/maps/api/geocode/json?latlng=16.0652695,108.2010651&key=AIzaSyDBxMizhomgbDZ9ljbf9-mY_Omuo0heCig';
-    urlAddress='https://maps.googleapis.com/maps/api/geocode/json?address=30%20be%20van%20dan,%20da%20nang&key=AIzaSyDBxMizhomgbDZ9ljbf9-mY_Omuo0heCig';
-    urlRoute='https://maps.googleapis.com/maps/api/directions/json?origin=30%20Be%20van%20dan,%20da%20nang,%20viet%20nam&destination=263%20nguyen%20van%20linh,%20da%20nang&key=AIzaSyDBxMizhomgbDZ9ljbf9-mY_Omuo0heCig';
-    urlWeather='https://api.openweathermap.org/data/2.5/weather?id=1905468&APPID=22bc862e9465e98d1c74b7351cab36ef&units=metric';
-    */
-
+   
     /* // Converts from degrees to radians.
     Math.radians = function(degrees) {
         return degrees * Math.PI / 180;
@@ -58,9 +52,9 @@ export class ApiMapService {
 
     getAddressFromLatlng(latlng: string) {
         //return this.http.get('https://maps.googleapis.com/maps/api/geocode/json?latlng='
-        return this.httpClient.get(ApiStorageService.authenticationServer + '/location/json-point?latlng='
+        return this.httpClient.get(ApiStorageService.authServer + '/location/json-point?latlng='
             + latlng
-            + '&key=' + this.GOOGLE_API_KEY
+            //+ '&key=' + this.GOOGLE_API_KEY
             )
             .toPromise()
             .then(data => {
@@ -80,9 +74,9 @@ export class ApiMapService {
 
     getLatlngFromAddress(address: string) {
         //return this.http.get('https://maps.googleapis.com/maps/api/geocode/json?address='
-        return this.httpClient.get(ApiStorageService.authenticationServer + '/location/json-point?address='
+        return this.httpClient.get(ApiStorageService.authServer + '/location/json-point?address='
             + address
-            + '&key=' + this.GOOGLE_API_KEY
+            //+ '&key=' + this.GOOGLE_API_KEY
             )
             .toPromise()
             .then(data => {
@@ -95,7 +89,7 @@ export class ApiMapService {
     
     getRouteApi(startPoint: string, endPoint: string) {
         return this.httpClient.get(
-            ApiStorageService.authenticationServer + '/location/json-route?origin=' + startPoint
+            ApiStorageService.authServer + '/location/json-route?origin=' + startPoint
             + '&destination=' + endPoint
             //+ '&key=' + this.GOOGLE_API_KEY
             )

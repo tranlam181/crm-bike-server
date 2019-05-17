@@ -1,5 +1,6 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+
 import { ErrorHandler, NgModule } from '@angular/core';
 import { IonicApp, IonicErrorHandler, IonicModule } from 'ionic-angular';
 import { SplashScreen } from '@ionic-native/splash-screen';
@@ -14,8 +15,10 @@ import { HomeSpeedtestPage } from '../pages/home-speedtest/home-speedtest';
 import { HomeMenuPage } from '../pages/home-menu/home-menu';
 import { TimeAgoPipe} from 'time-ago-pipe';
 
+import { AutoCompleteModule } from 'ionic2-auto-complete';
 import { NgxQRCodeModule } from 'ngx-qrcode2';
 import { NgxBarcodeModule } from 'ngx-barcode';
+import { ChartsModule } from 'ng2-charts-x';
 import { BarcodeScanner } from '@ionic-native/barcode-scanner';
 
 
@@ -64,22 +67,18 @@ import { ContactsPage } from '../pages/contacts/contacts';
 import { CordovaPage } from '../pages/cordova-info/cordova-info';
 import { ApiContactService } from '../services/apiContactService';
 import { ApiChatService } from '../services/apiChatService';
-import { InvoicePage } from '../pages/invoice/invoice';
-import { CustomerPage } from '../pages/customer/customer';
-import { ParametersPage } from '../pages/parameters/parameters';
-import { ReportPage } from '../pages/report/report';
-import { ChattingRoomPage } from '../pages/chatting-room/chatting-room';
-import { ChattingPrivatePage } from '../pages/chatting-private/chatting-private';
 import { FriendsPage } from '../pages/friends/friends';
 import { ReversePipe } from '../pipes/reverse-pipe';
-
+import { ChattingPrivatePage } from '../pages/chatting-private/chatting-private';
+import { ChattingRoomPage } from '../pages/chatting-room/chatting-room';
+import { ReportPage } from '../pages/report/report';
+import { ApiAutoCompleteService } from '../services/apiAutoCompleteService';
+import { DynamicChartPage } from '../pages/dynamic-chart/dynamic-chart';
+import { NewlinePipe } from '../pipes/new-line';
+import { LinkifyPipe } from '../pipes/linkify';
 
 @NgModule({
   declarations: [
-    ParametersPage,
-    ReportPage,
-    CustomerPage,
-    InvoicePage,
     MyApp,
     TreeView,
     LoginPage,
@@ -102,16 +101,20 @@ import { ReversePipe } from '../pipes/reverse-pipe';
     DynamicCardSocialPage,
     DynamicMediasPage,
     DynamicListOrderPage,
+    DynamicChartPage,
     GoogleMapPage,
     HomeChatPage,
     HandDrawPage,
     TimeAgoPipe,
     SafePipe,
-    Autosize,
     ReversePipe,
+    NewlinePipe,
+    LinkifyPipe,
+    Autosize,
     FriendsPage,
+    ChattingPrivatePage,
     ChattingRoomPage,
-    ChattingPrivatePage
+    ReportPage
   ],
   imports: [
     BrowserModule,
@@ -119,14 +122,12 @@ import { ReversePipe } from '../pipes/reverse-pipe';
     StorageServiceModule,
     NgxBarcodeModule,
     NgxQRCodeModule,
+    ChartsModule,
+    AutoCompleteModule,
     IonicModule.forRoot(MyApp)
   ],
   bootstrap: [IonicApp],
   entryComponents: [
-    ParametersPage,
-    ReportPage,
-    CustomerPage,
-    InvoicePage,
     MyApp,
     TreeView,
     LoginPage,
@@ -149,12 +150,14 @@ import { ReversePipe } from '../pipes/reverse-pipe';
     DynamicCardSocialPage,
     DynamicMediasPage,
     DynamicListOrderPage,
+    DynamicChartPage,
     GoogleMapPage,
     HomeChatPage,
     HandDrawPage,
     FriendsPage,
+    ChattingPrivatePage,
     ChattingRoomPage,
-    ChattingPrivatePage
+    ReportPage
   ],
   providers: [
     StatusBar,
@@ -181,6 +184,7 @@ import { ReversePipe } from '../pipes/reverse-pipe';
     ApiContactService,
     ApiChatService,
     RequestInterceptor,
+    ApiAutoCompleteService,
     {
       provide: HTTP_INTERCEPTORS,
       useClass: RequestInterceptor,

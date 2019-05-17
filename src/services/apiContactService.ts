@@ -152,7 +152,7 @@ export class ApiContactService {
                     let contactsProcessed;
 
                     try {
-                        vn_prefix_code = await this.apiAuth.getDynamicUrl(ApiStorageService.authenticationServer + "/ext-public/vn-net-code");
+                        vn_prefix_code = await this.apiAuth.getDynamicUrl(ApiStorageService.authServer + "/ext-public/vn-net-code");
                     } catch (e) { }
 
                     //doc tu dia len, neu co thi liet ke ra luon
@@ -642,7 +642,7 @@ export class ApiContactService {
             });
             loading.present();
 
-            this.apiAuth.getDynamicUrl(ApiStorageService.authenticationServer + "/ext-auth/get-your-contacts", true)
+            this.apiAuth.getDynamicUrl(ApiStorageService.authServer + "/ext-auth/get-your-contacts", true)
                 .then(res => {
                     //console.log('ket qua res', res);
                     if (res.status === 1 && res.result && res.result.length > 0) {
@@ -712,7 +712,7 @@ export class ApiContactService {
             });
             loading.present();
 
-            this.apiAuth.getDynamicUrl(ApiStorageService.authenticationServer + "/ext-auth/get-users-info" + (contactFriends ? "?users=" + contactFriends : ""), true)
+            this.apiAuth.getDynamicUrl(ApiStorageService.authServer + "/ext-auth/get-users-info" + (contactFriends ? "?users=" + contactFriends : ""), true)
                 .then(res => {
                     if (res.status === 1 && res.users && res.users.length > 0) {
                         resolve(res.users);

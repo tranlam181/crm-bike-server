@@ -200,7 +200,7 @@ export class LoginPage {
               type: "button"
             , options: [
                 { name: "Logout", command:"EXIT" , next: "CALLBACK"}
-              , { name: "Tạo mới", command:"CREATE", url: ApiStorageService.authenticationServer+"/ext-auth/save-user-info", token: this.token, next: "CALLBACK"}
+              , { name: "Tạo mới", command:"CREATE", url: ApiStorageService.authServer+"/ext-auth/save-user-info", token: this.token, next: "CALLBACK"}
             ]
           }
           ]
@@ -241,7 +241,7 @@ export class LoginPage {
             type: "button"
           , options: [
             { name: "Bỏ qua", command:"CLOSE" , next: "CLOSE"}
-            , { name: "Cập nhập", command:"UPDATE", url: ApiStorageService.authenticationServer+"/ext-auth/save-user-info", token: this.token, next: "CALLBACK"}
+            , { name: "Cập nhập", command:"UPDATE", url: ApiStorageService.authServer+"/ext-auth/save-user-info", token: this.token, next: "CALLBACK"}
           ]
         }
         ]

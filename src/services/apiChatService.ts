@@ -65,7 +65,7 @@ export class ApiChatService {
         }
     }
 
-    console.log('Tao message',this.unreadMessages);
+    //console.log('Tao message',this.unreadMessages);
 
   }
   /**
@@ -288,7 +288,7 @@ export class ApiChatService {
 
         if (msg.step == 'JOINED') {
           //4.2 rooms joined first
-          console.log('JOINED rooms',msg.rooms);
+          //console.log('JOINED rooms',msg.rooms);
           //room cu truoc do, + rooms moi join duoc
           //vi kieu rôm
           if (msg.rooms){
@@ -309,7 +309,7 @@ export class ApiChatService {
 
         if (msg.step == 'ACCEPTED') {
           //5.1 + 6.2 accepted room
-          console.log('join rooms ACCEPTED', msg.room);
+          //console.log('join rooms ACCEPTED', msg.room);
 
           let index = this.chatRooms.findIndex(x=>x.id === msg.room.id);
           if (index<0) {

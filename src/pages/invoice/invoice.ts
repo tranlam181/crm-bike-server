@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component } from '@angular/core';
 import { NavController, AlertController, LoadingController, Platform, ItemSliding, Item, ModalController } from 'ionic-angular';
 import { InAppBrowser } from '@ionic-native/in-app-browser/ngx';
 import { ApiResourceService } from '../../services/apiResourceServices';

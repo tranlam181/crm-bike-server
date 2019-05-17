@@ -155,13 +155,13 @@ export class OwnerImagesPage {
             //gui 
             if (this.func==='avatar'){
               let json_data = {image: ApiStorageService.mediaServer + "/db/get-file/" + encodeURI(item.url)}
-              this.authService.postDynamicForm(ApiStorageService.authenticationServer+"/ext-auth/save-user-info",json_data,true)
+              this.authService.postDynamicForm(ApiStorageService.authServer+"/ext-auth/save-user-info",json_data,true)
               .then(data=>{})
               .catch(err=>{})
             }else{
               if (this.func==='background'){
                 let json_data = {background: ApiStorageService.mediaServer + "/db/get-file/" + encodeURI(item.url)}
-                this.authService.postDynamicForm(ApiStorageService.authenticationServer+"/ext-auth/save-user-info",json_data,true)
+                this.authService.postDynamicForm(ApiStorageService.authServer+"/ext-auth/save-user-info",json_data,true)
                 .then(data=>{})
                 .catch(err=>{})
               }

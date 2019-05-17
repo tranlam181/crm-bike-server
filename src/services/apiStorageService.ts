@@ -10,11 +10,13 @@ export class ApiStorageService {
     public static token;
     //public static mapServer = 'https://c3.mobifone.vn/api/location'; 
     //public static chatServer = 'http://localhost:8080'; 
-    //public static resourceServer = 'http://localhost:9236/qld'; 
     public static chatServer = 'https://c3.mobifone.vn'; 
     public static mediaServer = 'https://c3.mobifone.vn/media'; 
     public static resourceServer = 'https://c3.mobifone.vn/crm'; 
-    public static authenticationServer = 'https://c3.mobifone.vn/api';
+    public static authServer = 'https://c3.mobifone.vn/api';
+
+    public static siteServer = 'https://c3.mobifone.vn/site-manager';
+    public static newsServer = 'https://c3.mobifone.vn/site-manager/news';
 
     constructor(@Inject(LOCAL_STORAGE) private storage: StorageService) {
     }
