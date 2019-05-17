@@ -10,7 +10,7 @@ function main(isHttps) {
   
   //web tinh
   app.use(express.static(__dirname + '/www'));
-  app.use('/api/',express.static(__dirname + '/platforms/browser/www'));
+  app.use('/crm/',express.static(__dirname + '/platforms/browser/www'));
 
   //CORS handle
   app.use(require('./handlers/cors-handler').cors);
