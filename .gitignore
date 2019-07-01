@@ -56,3 +56,4 @@ $RECYCLE.BIN/
 Thumbs.db
 UserInterfaceState.xcuserstate
 #.gitignore
+package-lock.json
