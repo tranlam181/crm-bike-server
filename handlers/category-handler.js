@@ -25,9 +25,7 @@ class Handler {
                 }
             ));
         }).catch(err => {
-            console.log('error:',err);
-            //res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end("");
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -47,9 +45,7 @@ class Handler {
                 }
             ));
         }).catch(err => {
-            console.log('error:',err);
-            //res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end("");
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -70,9 +66,41 @@ class Handler {
                 }
             ));
         }).catch(err => {
-            console.log('error:',err);
-            //res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end("");
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getBikeTypes(req, res, next) {
+        db.getRsts("SELECT id, name\
+            FROM dm_loai_xe\
+            ORDER BY name"
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getShops(req, res, next) {
+        db.getRsts("SELECT id, name\
+            FROM dm_cua_hang\
+            ORDER BY name"
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 }

@@ -6,126 +6,59 @@
  * xu ly tu token truoc do, neu req.user.data.role===99 la quyen root (chi developer 903500888 thoi)
  * 
  */
-const arrObj = require('../utils/array-object');
-
 const SQLiteDAO = require('../db/sqlite3/sqlite-dao');
-const dbFile = './db/database/admin-roles.db';
+const dbFile = './db/database/crm-bike.db';
 const db = new SQLiteDAO(dbFile);
+const {capitalizeFirstLetter} = require('../utils/utils')
 
 class Handler {
+    addCustomer(req, res, next) {
+        let customer = req.json_data
+        customer.full_name = capitalizeFirstLetter(customer.full_name.trim())
+        customer.phone = customer.phone.trim()
 
-    /**
-     * Thiết lập chức năng dựa trên đường dẫn của get/post
-     * Đường dẫn cuối sẽ là duy nhất của từng chức năng
-     * ví dụ: /db/edit-customer thì edit-customer là chức năng
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
-     */
-    setFunctionFromPath(req,res,next){
-        //lay duong dan phia sau
-        req.functionCode = req.pathName.substring(req.pathName.lastIndexOf("/")+1);
-        next();
-    }
-
-    //lay quyen de thuc hien menu va active function cua user
-    getRoles(req,res,next){
-
-        console.log('get roles',req.user);
-
-        if (req.user){
-            db.getRst("select roles from admin_roles\
-                        where username='"+req.user.username+"'"
-            )
-            .then(row=>{
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-                res.end(row?row.roles:""); //obj="{menu:[],functions:[]}"
-            })
-            .catch(err=>{
-                console.log('error:',err);
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-                res.end("");//obj.functions==false
-            });
-
-        }else{
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({}));//obj.roles==false
-        }
-    }
-
-    /**
-     * req.functionCode = "active" //chuc nang toi thieu la active 
-     * 
-     * req.functionCode = "edit-customer" //yeu cau kiem tra quyen
-     * //neu khong co functionCode thi xem nhu khong can kiem tra quyen
-     * 
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
-     */
-    async checkFunctionRole(req,res,next){
-
+        // 1. check xem customer da ton tai chua, check theo [full_name, phone]
+        let sql = 'SELECT MAX(id) as khach_hang_id, COUNT(1) AS count FROM khach_hang WHERE full_name=? AND phone=?'
         
-        if (req.functionCode){ //can kiem tra quyen cua user co khong
-            if (req.user&&req.user.data){
-                //console.log('userData:',req.user.data);
-                if (req.user.data.role===99) {
-                    next() //quyen root
-                }else{
-                    try{
-                        let row = await db.getRst("select roles\
-                                                     from admin_roles\
-                                                     where username='"+req.user.username+"'");
-                        let row2 = await db.getRst("select id\
-                                                         from admin_functions\
-                                                         where function_code ='"+req.functionCode+"'");
-                        let roles = row&&row.roles?JSON.parse(row.roles):undefined; //tra ve object
-                        let functionId = row2?row2.id:undefined; //tra ve id
-                        //console.log('rolesFunction', functionId, roles);
-                        let index =  roles&&functionId&&roles.functions?roles.functions.findIndex(x=>x===functionId):-1;
-    
-                        if (index>=0){
-                            next()
-                        }else{
-                            res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
-                            res.end(JSON.stringify({message:'Bạn KHÔNG ĐƯỢC PHÂN QUYỀN thực hiện chức năng này'}));
-                        }
-
-                    }catch(e){
-                        res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
-                        res.end(JSON.stringify({message:'Lỗi trong lúc kiểm tra quyền', error: e}));
-                    }
-                }
-            } else {
-                res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
-                res.end(JSON.stringify({message:'Bạn không có quyền thực hiện chức năng này'}));
+        db.getRst(sql, [customer.full_name, customer.phone])
+        .then(async (row) => {
+            if (row.count > 0) { // ton tai roi thi khong can them moi Khach hang                
+                return {khach_hang_id: row.khach_hang_id}
+            } else { // chua ton tai thi them moi Khach hang, dong thoi them moi du lieu xe
+                // Them moi Khach hang
+                let sql = 'INSERT INTO khach_hang (full_name, province_code, district_code, precinct_code, phone, birthday, sex) VALUES (?,?,?,?,?,?,?)'
+                let params = [customer.full_name, 
+                    customer.province_code, 
+                    customer.district_code, 
+                    customer.precinct_code, 
+                    customer.phone.trim(), 
+                    customer.birthday, 
+                    customer.sex
+                ]
+                let result = await db.runSql(sql, params).then(result => result).catch(err => err)
+                return result.hasOwnProperty('lastID') ? {khach_hang_id: result.lastID} : Promise.reject(result)
             }
-        }else{
-            next(); //xem nhu khong can kiem tra quyen
-        }
-
-    }
-
-    getUserMenu(req,res,next){
-        db.getRsts('select *\
-                    from admin_menu\
-                     where status = 1\
-                     order by order_1')
-        .then(results => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(results
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
+        })
+        .then(customerInfo => {
+            // them du lieu xe
+            let sql = "INSERT INTO khach_hang_xe (khach_hang_id, cua_hang_id, loai_xe_id, buy_date, bike_number) VALUES (?,?,?,strftime('%s',?),?)"
+            let params = [
+                customerInfo.khach_hang_id,
+                customer.shop_id,
+                customer.bike_type_id,
+                customer.buy_date,
+                customer.bike_number
+            ]
+            return db.runSql(sql, params).then(result => {
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+                res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', count:result.changes}))
+            })
         })
         .catch(err => {
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-            res.end(JSON.stringify([]));
-        });
+            console.log('Last catch:', err);            
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })  
     }
-
 }
 
 module.exports = {

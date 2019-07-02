@@ -246,7 +246,7 @@ class SQLiteDAO {
           if (!isSilence) console.log('Could NOT excute: ' + sql)
           reject(err)
         } else {   //Trường hợp chạy query thành công
-          resolve('Executed: ' + sql)   //Trả về kết quả là một object có id lấy từ DB.
+          resolve({lastID: this.lastID, changes: this.changes})   //Trả về kết quả là một object có id lấy từ DB.
         }
       })
     })
