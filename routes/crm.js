@@ -28,5 +28,8 @@ router.post('/customers'
     , postHandler.jsonProcess
     , customerHanlder.addCustomer
 );
+router.get('/customers'
+    , customerHanlder.getCustomers
+);
 
 module.exports = router;

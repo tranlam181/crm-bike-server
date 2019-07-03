@@ -14,7 +14,7 @@ class Handler {
     getProvinces(req, res, next) {
         db.getRsts("SELECT province_code, name \
             FROM dm_dia_ly \
-            WHERE district_code = '' AND precinct_code = '' \
+            WHERE district_code = '' AND precinct_code = '' and province_code='QTR'\
             ORDER BY name"
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });

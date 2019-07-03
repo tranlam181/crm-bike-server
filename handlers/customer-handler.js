@@ -26,7 +26,7 @@ class Handler {
                 return {khach_hang_id: row.khach_hang_id}
             } else { // chua ton tai thi them moi Khach hang, dong thoi them moi du lieu xe
                 // Them moi Khach hang
-                let sql = 'INSERT INTO khach_hang (full_name, province_code, district_code, precinct_code, phone, birthday, sex) VALUES (?,?,?,?,?,?,?)'
+                let sql = "INSERT INTO khach_hang (full_name, province_code, district_code, precinct_code, phone, birthday, sex) VALUES (?,?,?,?,?,strftime('%s',?),?)"
                 let params = [customer.full_name, 
                     customer.province_code, 
                     customer.district_code, 
@@ -58,6 +58,35 @@ class Handler {
             console.log('Last catch:', err);            
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })  
+    }
+
+    getCustomers(req, res, next) {
+        db.getRsts("SELECT id,\
+                    full_name,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
+                    phone,\
+                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
+                    CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex\
+            FROM khach_hang a"
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
     }
 }
 
