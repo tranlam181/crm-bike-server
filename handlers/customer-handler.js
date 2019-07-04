@@ -49,10 +49,15 @@ class Handler {
                 customer.buy_date,
                 customer.bike_number
             ]
-            return db.runSql(sql, params).then(result => {
+            if (customer.bike_type_id) {
+                return db.runSql(sql, params).then(result => {
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+                    res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', count:result.changes}))
+                })
+            } else {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', count:result.changes}))
-            })
+                res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công'}))
+            }            
         })
         .catch(err => {
             console.log('Last catch:', err);            
@@ -75,7 +80,7 @@ class Handler {
                     phone,\
                     strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
                     CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex\
-            FROM khach_hang a"
+            FROM khach_hang a limit 20"
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
