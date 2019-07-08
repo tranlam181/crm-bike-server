@@ -66,7 +66,39 @@ class Handler {
     }
 
     getCustomers(req, res, next) {
-        db.getRsts("SELECT id,\
+        let filter = req.query.filter
+        let s = req.query.s
+        let sql = ''
+        let params = []
+        
+        if (!s) s = ''
+
+        console.log('filter=', filter, 's=', s);
+
+        switch (filter) {
+            case 'birthday':
+                sql = "SELECT id,\
+                        full_name,\
+                        (SELECT MAX (name)\
+                        FROM dm_dia_ly\
+                        WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
+                        (SELECT MAX (name)\
+                        FROM dm_dia_ly\
+                        WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
+                        (SELECT MAX (name)\
+                        FROM dm_dia_ly\
+                        WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
+                        phone,\
+                        strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
+                        CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex\
+                FROM khach_hang a\
+                WHERE	  strftime ('%m', birthday, 'unixepoch') = strftime ('%m', 'now')\
+                AND CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL) >= CAST (strftime ('%d', 'now') AS DECIMAL)\
+                ORDER BY CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL)"
+                break;
+            
+            case 'coming':
+                sql = "SELECT id,\
                     full_name,\
                     (SELECT MAX (name)\
                     FROM dm_dia_ly\
@@ -80,8 +112,54 @@ class Handler {
                     phone,\
                     strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
                     CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex\
-            FROM khach_hang a limit 20"
-        ).then(row => {
+                FROM khach_hang a\
+                WHERE (next_book_date - strftime ('%s', 'now')) / 60 / 60 / 24 BETWEEN 0 AND 7\
+                ORDER BY next_book_date"
+                break;
+
+            case 'passive':
+                sql = "SELECT id,\
+                    full_name,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
+                    phone,\
+                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
+                    CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex\
+                FROM khach_hang a\
+                WHERE (strftime ('%s', 'now') - maintance_last_date) / 60 / 60 / 24 / 30 >= 6\
+                ORDER BY maintance_last_date DESC\
+                LIMIT 20"
+                break;
+
+            default:
+                sql = "SELECT id,\
+                    full_name,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
+                    phone,\
+                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
+                    CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex\
+                    FROM khach_hang a\
+                    where (ifnull(?,'') = '' OR phone LIKE '%' || ? || '%' OR UPPER(full_name) LIKE '%' || UPPER(?) || '%' )\
+                    limit 20"
+                params = [s, s, s]
+        }
+
+        db.getRsts(sql, params).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
                 , (key, value) => {
@@ -89,6 +167,33 @@ class Handler {
                     return value;
                 }
             ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getCustomer(req, res, next) {
+        let khach_hang_id = req.params.khach_hang_id
+
+        db.getRst("SELECT id,\
+                    full_name,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
+                    (SELECT MAX (name)\
+                    FROM dm_dia_ly\
+                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
+                    phone,\
+                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
+                    CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex\
+            FROM khach_hang a\
+            WHERE id=?", [khach_hang_id]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });

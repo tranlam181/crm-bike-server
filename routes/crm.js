@@ -31,5 +31,8 @@ router.post('/customers'
 router.get('/customers'
     , customerHanlder.getCustomers
 );
+router.get('/customers/:khach_hang_id'
+    , customerHanlder.getCustomer
+);
 
 module.exports = router;
