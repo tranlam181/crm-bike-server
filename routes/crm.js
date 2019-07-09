@@ -34,5 +34,8 @@ router.get('/customers'
 router.get('/customers/:khach_hang_id'
     , customerHanlder.getCustomer
 );
+router.get('/customers/:khach_hang_id/bikes'
+    , customerHanlder.getCustomerBikes
+);
 
 module.exports = router;
