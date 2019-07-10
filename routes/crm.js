@@ -24,6 +24,12 @@ router.get('/category/bike-types'
 router.get('/category/shops'
     , categoryHandler.getShops
 );
+router.get('/category/buy-opinions'
+    , categoryHandler.getBuyOpinions
+);
+router.get('/category/call-results'
+    , categoryHandler.getCallResults
+);
 router.post('/customers'
     , postHandler.jsonProcess
     , customerHanlder.addCustomer
@@ -36,6 +42,13 @@ router.get('/customers/:khach_hang_id'
 );
 router.get('/customers/:khach_hang_id/bikes'
     , customerHanlder.getCustomerBikes
+);
+router.get('/customers-bikes/:khach_hang_xe_id'
+    , customerHanlder.getCustomerBikeInfo
+);
+router.post('/customers-bikes/:khach_hang_xe_id/callouts'
+    , postHandler.jsonProcess
+    , customerHanlder.addCallout
 );
 
 module.exports = router;

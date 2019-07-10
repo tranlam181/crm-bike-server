@@ -103,6 +103,36 @@ class Handler {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
+
+    getBuyOpinions(req, res, next) {
+        db.getRsts("select id,name from  dm_y_kien_mua_xe where status is null order by name"
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getCallResults(req, res, next) {
+        db.getRsts("select id,name from  dm_ket_qua_goi_ra where status is null order by name"
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
 }
 
 module.exports = {
