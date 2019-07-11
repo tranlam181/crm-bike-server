@@ -30,6 +30,9 @@ router.get('/category/buy-opinions'
 router.get('/category/call-results'
     , categoryHandler.getCallResults
 );
+router.get('/category/maintance-types'
+    , categoryHandler.getMaintanceTypes
+);
 router.post('/customers'
     , postHandler.jsonProcess
     , customerHanlder.addCustomer

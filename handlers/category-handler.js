@@ -133,6 +133,29 @@ class Handler {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
+
+    getMaintanceTypes(req, res, next) {
+        let filter = req.query.filter
+        if (!filter || filter=='undefined') filter = ''
+
+        db.getRsts("select id,name \
+                    from  dm_loai_bao_duong \
+                    where status is null \
+                    AND ((ifnull(?,'') = '' OR name_no_sign LIKE '%' || UPPER(?) || '%' )) \
+                    ORDER BY name_no_sign\
+                    limit 20", [filter, filter]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
 }
 
 module.exports = {
