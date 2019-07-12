@@ -53,5 +53,9 @@ router.post('/customers-bikes/:khach_hang_xe_id/callouts'
     , postHandler.jsonProcess
     , customerHanlder.addCallout
 );
+router.post('/customers-bikes/:khach_hang_xe_id/maintances'
+    , postHandler.jsonProcess
+    , customerHanlder.addMaintance
+);
 
 module.exports = router;

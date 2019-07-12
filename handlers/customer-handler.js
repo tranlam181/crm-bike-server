@@ -74,90 +74,51 @@ class Handler {
         
         if (!s || s=='undefined') s = ''
 
+        sql = "SELECT id,\
+                full_name,\
+                (SELECT MAX (name)\
+                FROM dm_dia_ly\
+                WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
+                (SELECT MAX (name)\
+                FROM dm_dia_ly\
+                WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
+                (SELECT MAX (name)\
+                FROM dm_dia_ly\
+                WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
+                phone,\
+                strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
+                CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,\
+                strftime ('%d/%m/%Y', next_book_date, 'unixepoch') AS next_book_date,\
+                strftime ('%d/%m/%Y', last_call_out_date, 'unixepoch') AS last_call_out_date,\
+                strftime ('%d/%m/%Y', last_maintance_date, 'unixepoch') AS last_maintance_date"
+
         switch (filter) {
             case 'birthday':
-                sql = "SELECT id,\
-                        full_name,\
-                        (SELECT MAX (name)\
-                        FROM dm_dia_ly\
-                        WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
-                        (SELECT MAX (name)\
-                        FROM dm_dia_ly\
-                        WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
-                        (SELECT MAX (name)\
-                        FROM dm_dia_ly\
-                        WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
-                        phone,\
-                        strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
-                        CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex\
-                FROM khach_hang a\
-                WHERE	  strftime ('%m', birthday, 'unixepoch') = strftime ('%m', 'now')\
-                AND CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL) >= CAST (strftime ('%d', 'now') AS DECIMAL)\
-                ORDER BY CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL), full_name_no_sign"
+                sql += " FROM khach_hang a\
+                    WHERE	  strftime ('%m', birthday, 'unixepoch') = strftime ('%m', 'now')\
+                    AND CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL) >= CAST (strftime ('%d', 'now') AS DECIMAL)\
+                    ORDER BY CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL), full_name_no_sign"
                 break;
             
             case 'coming':
-                sql = "SELECT id,\
-                    full_name,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
-                    phone,\
-                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
-                    CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,\
-                    strftime ('%d/%m/%Y', next_book_date, 'unixepoch') AS next_book_date\
-                FROM khach_hang a\
-                WHERE (next_book_date - strftime ('%s', 'now')) / 60 / 60 / 24 BETWEEN 0 AND 7\
-                ORDER BY next_book_date, full_name_no_sign"
+                sql += " FROM khach_hang a\
+                    WHERE (next_book_date - strftime ('%s', 'now')) / 60 / 60 / 24 BETWEEN 0 AND 7\
+                    ORDER BY next_book_date, full_name_no_sign\
+                    LIMIT 20"
                 break;
 
             case 'passive':
-                sql = "SELECT id,\
-                    full_name,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
-                    phone,\
-                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
-                    CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,\
-                    strftime ('%d/%m/%Y', last_maintance_date, 'unixepoch') AS last_maintance_date\
-                FROM khach_hang a\
-                WHERE (strftime ('%s', 'now') - last_maintance_date) / 60 / 60 / 24 / 30 >= 6\
-                ORDER BY last_maintance_date DESC, full_name_no_sign\
-                LIMIT 20"
+                sql += " FROM khach_hang a\
+                    WHERE (strftime ('%s', 'now') - last_maintance_date) / 60 / 60 / 24 / 30 >= 6\
+                    ORDER BY last_maintance_date DESC, full_name_no_sign\
+                    LIMIT 20"
                 break;
 
             default:
-                sql = "SELECT id,\
-                    full_name,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
-                    phone,\
-                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
-                    CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex\
-                    FROM khach_hang a\
-                    where (ifnull(?,'') = '' OR phone LIKE '%' || ? || '%' OR full_name_no_sign LIKE '%' || UPPER(?) || '%' )\
+                sql += " FROM khach_hang a\
+                    WHERE (ifnull(?,'') = '' OR phone LIKE '%' || ? || '%' OR full_name_no_sign LIKE '%' || UPPER(?) || '%' )\
                     ORDER BY full_name_no_sign\
-                    limit 20"
+                    LIMIT 20"
                 params = [s, s, s]
         }
 
@@ -278,12 +239,62 @@ class Handler {
         db.runSql(sql, params).then(result => {
             return result
         }).then(result => {
-            sql = "update khach_hang set goi_ra_id_last=?, next_book_date=strftime('%s',?) where id=(select khach_hang_id from khach_hang_xe where id=?)"
+            sql = "update khach_hang set goi_ra_id_last=?, last_call_out_date=strftime('%s', datetime('now', 'localtime')) ,next_book_date=strftime('%s',?) where id=(select khach_hang_id from khach_hang_xe where id=?)"
             params = [result.lastID, callout.book_date, khach_hang_xe_id]
 
             return db.runSql(sql, params).then(result => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công', count:result.changes, id:result.lastID}))
+            })
+        })
+        .catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        }) 
+    }
+
+    addMaintance(req, res, next) {
+        let khach_hang_xe_id = req.params.khach_hang_xe_id
+        let maintance = req.json_data
+        let sql = "INSERT INTO bao_duong (khach_hang_xe_id,\
+                        maintance_date,\
+                        book_date,\
+                        note)\
+                    VALUES (?,\
+                        strftime('%s', datetime('now', 'localtime')),\
+                        strftime ('%s', ?),\
+                        ?)"
+        let params = [
+            khach_hang_xe_id,
+            maintance.book_date,
+            maintance.note
+        ]   
+
+        db.runSql(sql, params).then(result => {
+            return result
+        }).then(async (result) => {
+            sql = "update khach_hang\
+                    set bao_duong_id_last=?,\
+                    last_maintance_date=strftime('%s', datetime('now', 'localtime')),\
+                    next_book_date=strftime ('%s', ?)\
+                where id=(select khach_hang_id from khach_hang_xe where id=?)"
+            params = [result.lastID, maintance.book_date, khach_hang_xe_id]
+
+            let updateResult = await db.runSql(sql, params)
+            return updateResult.hasOwnProperty('lastID') ? result.lastID : Promise.reject(updateResult)
+        }).then(bao_duong_id => {
+            let placeholder =  maintance.details.map((bao_duong, index) => '(?,?,?)').join(',')
+            sql = 'INSERT INTO bao_duong_chi_phi (bao_duong_id, loai_bao_duong_id, price) VALUES ' + placeholder
+
+            params = maintance.details.reduce((result, e, idx) => {
+                result = [...result, bao_duong_id, e.loai_bao_duong.id, e.price]
+                return result
+            }, [])
+
+            console.log(params)
+
+            return db.runSql(sql, params).then(result => {
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+                res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả bảo dưỡng thành công', count:result.changes, id:result.lastID}))
             })
         })
         .catch(err => {
