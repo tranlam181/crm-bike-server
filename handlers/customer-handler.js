@@ -74,7 +74,7 @@ class Handler {
         
         if (!s || s=='undefined') s = ''
 
-        sql = "SELECT id,\
+        sql = "SELECT a.id,\
                 full_name,\
                 (SELECT MAX (name)\
                 FROM dm_dia_ly\
@@ -85,12 +85,12 @@ class Handler {
                 (SELECT MAX (name)\
                 FROM dm_dia_ly\
                 WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
-                phone,\
-                strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
-                CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,\
-                strftime ('%d/%m/%Y', next_book_date, 'unixepoch') AS next_book_date,\
-                strftime ('%d/%m/%Y', last_call_out_date, 'unixepoch') AS last_call_out_date,\
-                strftime ('%d/%m/%Y', last_maintance_date, 'unixepoch') AS last_maintance_date"
+                a.phone,\
+                strftime ('%d/%m/%Y', a.birthday, 'unixepoch') AS birthday,\
+                CASE a.sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,\
+                strftime ('%d/%m/%Y', a.next_book_date, 'unixepoch') AS next_book_date,\
+                strftime ('%d/%m/%Y', a.last_call_out_date, 'unixepoch') AS last_call_out_date,\
+                strftime ('%d/%m/%Y', a.last_maintance_date, 'unixepoch') AS last_maintance_date"
 
         switch (filter) {
             case 'birthday':
@@ -102,15 +102,46 @@ class Handler {
             
             case 'coming':
                 sql += " FROM khach_hang a\
-                    WHERE (next_book_date - strftime ('%s', 'now')) / 60 / 60 / 24 BETWEEN 0 AND 7\
+                    WHERE (next_book_date - strftime ('%s', 'now')) / 60 / 60 / 24 <= 7\
                     ORDER BY next_book_date, full_name_no_sign\
                     LIMIT 20"
                 break;
 
             case 'passive':
                 sql += " FROM khach_hang a\
-                    WHERE (strftime ('%s', 'now') - last_maintance_date) / 60 / 60 / 24 / 30 >= 6\
+                    WHERE last_maintance_date IS NULL OR (strftime ('%s', 'now') - last_maintance_date) / 60 / 60 / 24 / 30 >= 6\
                     ORDER BY last_maintance_date DESC, full_name_no_sign\
+                    LIMIT 30"
+                break;
+
+            case 'active':
+                sql += " FROM khach_hang a\
+                    WHERE (strftime ('%s', 'now') - last_maintance_date) / 60 / 60 / 24 / 30 < 6\
+                    ORDER BY last_maintance_date DESC, full_name_no_sign\
+                    LIMIT 20"
+                break;
+
+            case 'after10BuyDate':
+                sql += " ,strftime ('%d/%m/%Y', b.buy_date, 'unixepoch') AS buy_date\
+                    , c.name as bike_name\
+                    , b.id as khach_hang_xe_id\
+                    FROM khach_hang a, khach_hang_xe b, dm_loai_xe c\
+                    WHERE	  a.id = b.khach_hang_id\
+                        AND b.y_kien_mua_xe_id IS NULL\
+                        AND (strftime ('%s', 'now') - b.buy_date) / 60 / 60 / 24 >= 10\
+                        AND b.loai_xe_id = c.id\
+                    ORDER BY b.buy_date\
+                    LIMIT 20"
+                break;
+
+            case 'after3MaintanceDate':
+                sql += " , c.id as bao_duong_id\
+                    FROM bao_duong c, khach_hang_xe b, khach_hang a\
+                    WHERE	  (strftime ('%s', 'now') - c.maintance_date) / 60 / 60 / 24 >= 1\
+                        AND c.feedback IS NULL\
+                        AND c.khach_hang_xe_id = b.id\
+                        AND b.khach_hang_id = a.id\
+                    ORDER BY c.maintance_date\
                     LIMIT 20"
                 break;
 
@@ -196,6 +227,7 @@ class Handler {
                     b.full_name,\
                     b.phone,\
                     strftime ('%d/%m/%Y', b.birthday, 'unixepoch') AS birthday,\
+                    strftime ('%d/%m/%Y', a.buy_date, 'unixepoch') AS buy_date,\
                     c.name AS bike_name\
             FROM khach_hang_xe a, khach_hang b, dm_loai_xe c\
             WHERE a.id = ? AND a.khach_hang_id = b.id \
@@ -211,6 +243,77 @@ class Handler {
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
+    }
+
+    getCustomerMaintanceInfo(req, res, next) {
+        let bao_duong_id = req.params.bao_duong_id
+
+        db.getRst("SELECT a.id AS bao_duong_id,\
+                    c.full_name,\
+                    c.phone,\
+                    d.name AS bike_name,\
+                    strftime ('%d/%m/%Y', a.maintance_date, 'unixepoch') AS maintance_date\
+            FROM bao_duong a,\
+                khach_hang_xe b,\
+                khach_hang c,\
+                dm_loai_xe d\
+            WHERE a.id = ? AND a.khach_hang_xe_id = b.id AND b.khach_hang_id = c.id AND b.loai_xe_id = d.id", [bao_duong_id]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getMaintanceDetails(req, res, next) {
+        let bao_duong_id = req.params.bao_duong_id
+
+        db.getRsts("SELECT b.name, a.price\
+                    FROM bao_duong_chi_phi a, dm_loai_bao_duong b\
+                    WHERE a.bao_duong_id = ? AND a.loai_bao_duong_id = b.id\
+                    ORDER BY b.name_no_sign", [bao_duong_id]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    updateFeedbackAfterBuy(req, res, next) {
+        let khach_hang_xe_id = req.params.khach_hang_xe_id
+        let feedback = req.json_data
+        let sql = "UPDATE khach_hang_xe \
+                    SET bike_number=?\
+                        , y_kien_mua_xe_id=?\
+                        , feedback_date=strftime('%s', datetime('now', 'localtime'))\
+                        , note=?\
+                    WHERE id=?"
+        let params = [
+            feedback.bike_number,
+            feedback.y_kien_mua_xe_id,
+            feedback.note,
+            khach_hang_xe_id
+        ]   
+
+        db.runSql(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công', count:result.changes, id:result.lastID}))
+        })
+        .catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        }) 
     }
 
     addCallout(req, res, next) {

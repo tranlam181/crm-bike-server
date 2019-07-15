@@ -49,6 +49,16 @@ router.get('/customers/:khach_hang_id/bikes'
 router.get('/customers-bikes/:khach_hang_xe_id'
     , customerHanlder.getCustomerBikeInfo
 );
+router.get('/customers/maintances/:bao_duong_id'
+    , customerHanlder.getCustomerMaintanceInfo
+);
+router.get('/maintances/:bao_duong_id/details'
+    , customerHanlder.getMaintanceDetails
+);
+router.put('/customers/bikes/:khach_hang_xe_id'
+    , postHandler.jsonProcess
+    , customerHanlder.updateFeedbackAfterBuy
+);
 router.post('/customers-bikes/:khach_hang_xe_id/callouts'
     , postHandler.jsonProcess
     , customerHanlder.addCallout
