@@ -4,7 +4,7 @@
  * phan quyen user
  * bien dau vao la req.user
  * xu ly tu token truoc do, neu req.user.data.role===99 la quyen root (chi developer 903500888 thoi)
- * 
+ *
  */
 const SQLiteDAO = require('../db/sqlite3/sqlite-dao');
 const dbFile = './db/database/crm-bike.db';
@@ -20,20 +20,20 @@ class Handler {
 
         // 1. check xem customer da ton tai chua, check theo [full_name, phone]
         let sql = 'SELECT MAX(id) as khach_hang_id, COUNT(1) AS count FROM khach_hang WHERE full_name_no_sign=? AND phone=?'
-        
+
         db.getRst(sql, [customer.full_name_no_sign, customer.phone])
         .then(async (row) => {
-            if (row.count > 0) { // ton tai roi thi khong can them moi Khach hang                
+            if (row.count > 0) { // ton tai roi thi khong can them moi Khach hang
                 return {khach_hang_id: row.khach_hang_id}
             } else { // chua ton tai thi them moi Khach hang, dong thoi them moi du lieu xe
                 // Them moi Khach hang
                 let sql = "INSERT INTO khach_hang (full_name, province_code, district_code, precinct_code, phone, birthday, sex, full_name_no_sign) VALUES (?,?,?,?,?,strftime('%s',?),?,?)"
-                let params = [customer.full_name, 
-                    customer.province_code, 
-                    customer.district_code, 
-                    customer.precinct_code, 
-                    customer.phone, 
-                    customer.birthday, 
+                let params = [customer.full_name,
+                    customer.province_code,
+                    customer.district_code,
+                    customer.precinct_code,
+                    customer.phone,
+                    customer.birthday,
                     customer.sex,
                     customer.full_name_no_sign
                 ]
@@ -59,11 +59,11 @@ class Handler {
             } else {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', khach_hang_id:customerInfo.khach_hang_id}))
-            }            
+            }
         })
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        })  
+        })
     }
 
     getCustomers(req, res, next) {
@@ -71,7 +71,7 @@ class Handler {
         let s = req.query.s
         let sql = ''
         let params = []
-        
+
         if (!s || s=='undefined') s = ''
 
         sql = "SELECT a.id,\
@@ -99,7 +99,7 @@ class Handler {
                     AND CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL) >= CAST (strftime ('%d', 'now') AS DECIMAL)\
                     ORDER BY CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL), full_name_no_sign"
                 break;
-            
+
             case 'coming':
                 sql += " FROM khach_hang a\
                     WHERE (next_book_date - strftime ('%s', 'now')) / 60 / 60 / 24 <= 7\
@@ -305,7 +305,7 @@ class Handler {
             feedback.y_kien_mua_xe_id,
             feedback.note,
             khach_hang_xe_id
-        ]   
+        ]
 
         db.runSql(sql, params).then(result => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -313,7 +313,31 @@ class Handler {
         })
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        }) 
+        })
+    }
+
+    updateFeedbackAfterMaintance(req, res, next) {
+        let bao_duong_id = req.params.bao_duong_id
+        let feedback = req.json_data
+        feedback.is_complain = (feedback.is_complain ? 1 : 0)
+        let sql = "UPDATE bao_duong \
+                    SET feedback=?\
+                        , feedback_date=strftime('%s', datetime('now', 'localtime'))\
+                        , is_complain=?\
+                    WHERE id=?"
+        let params = [
+            feedback.feedback,
+            feedback.is_complain,
+            bao_duong_id
+        ]
+
+        db.runSql(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công', count:result.changes, id:result.lastID}))
+        })
+        .catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
     }
 
     addCallout(req, res, next) {
@@ -337,7 +361,7 @@ class Handler {
             callout.y_kien_mua_xe_id,
             callout.note,
             callout.book_date
-        ]   
+        ]
 
         db.runSql(sql, params).then(result => {
             return result
@@ -352,7 +376,7 @@ class Handler {
         })
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        }) 
+        })
     }
 
     addMaintance(req, res, next) {
@@ -370,7 +394,7 @@ class Handler {
             khach_hang_xe_id,
             maintance.book_date,
             maintance.note
-        ]   
+        ]
 
         db.runSql(sql, params).then(result => {
             return result
@@ -402,7 +426,7 @@ class Handler {
         })
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        }) 
+        })
     }
 }
 
