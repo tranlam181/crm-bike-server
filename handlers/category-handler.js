@@ -4,7 +4,7 @@
  * phan quyen user
  * bien dau vao la req.user
  * xu ly tu token truoc do, neu req.user.data.role===99 la quyen root (chi developer 903500888 thoi)
- * 
+ *
  */
 const SQLiteDAO = require('../db/sqlite3/sqlite-dao');
 const dbFile = './db/database/crm-bike.db';
@@ -144,6 +144,21 @@ class Handler {
                     AND ((ifnull(?,'') = '' OR name_no_sign LIKE '%' || UPPER(?) || '%' )) \
                     ORDER BY name_no_sign\
                     limit 20", [filter, filter]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getServiceTypes(req, res, next) {
+        db.getRsts("select id, name from dm_dich_vu order by name", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row

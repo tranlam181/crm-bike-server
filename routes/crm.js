@@ -33,6 +33,9 @@ router.get('/category/call-results'
 router.get('/category/maintance-types'
     , categoryHandler.getMaintanceTypes
 );
+router.get('/category/service-types'
+    , categoryHandler.getServiceTypes
+);
 router.post('/customers'
     , postHandler.jsonProcess
     , customerHanlder.addCustomer
@@ -54,6 +57,10 @@ router.get('/customers/maintances/:bao_duong_id'
 );
 router.get('/maintances/:bao_duong_id/details'
     , customerHanlder.getMaintanceDetails
+);
+router.put('/maintances/:bao_duong_id'
+    , postHandler.jsonProcess
+    , customerHanlder.updateFeedbackAfterMaintance
 );
 router.put('/customers/bikes/:khach_hang_xe_id'
     , postHandler.jsonProcess
