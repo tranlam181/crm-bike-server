@@ -34,4 +34,4 @@ openssl genrsa -out ./cert/api-private-key.pem 4096
 
 openssl req -new -key ./cert/api-private-key.pem -out ./cert/api-req-cert.csr
 
-openssl x509 -req -days 365 -in ./cert/api-req-cert.csr -signkey ./cert/api-private-key.pem -out ./cert/api-certificate.pem
+openssl x509 -req -days 365 -in ./cert/api-req-cert.csr -signkey ./cert/api-private-key.pem -out ./cert/my-certificate.pem

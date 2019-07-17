@@ -1,7 +1,7 @@
 #! /bin/bash
 WORK_DIR=/mnt/code/IONIC/server-crm
 LOG_FILE=$WORK_DIR/logs/server.crm
-CLASSPATH=$WORK_DIR/server.js
+CLASSPATH=$WORK_DIR/server-crm.js
 pid_file=$WORK_DIR/service.pid
 TIMESTAMP=`date '+%Y%m%d_%H%M'`
 
