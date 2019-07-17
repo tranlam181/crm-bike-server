@@ -215,11 +215,11 @@ class Handler {
                                                 book_date,\
                                                 is_free\
                                         FROM lich_hen\
-                                        WHERE status IS NULL) d\
+                                        WHERE status IS NULL and khach_hang_xe_id IN (SELECT id from khach_hang_xe WHERE khach_hang_id=?)) d\
                             ON a.id = d.khach_hang_xe_id\
                         LEFT OUTER JOIN dm_dich_vu e ON d.dich_vu_id = e.id\
                     WHERE a.khach_hang_id = ? AND a.cua_hang_id = b.id AND a.loai_xe_id = c.id\
-                    ORDER BY d.book_date DESC", [khach_hang_id]
+                    ORDER BY d.book_date DESC", [khach_hang_id, khach_hang_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
@@ -253,9 +253,9 @@ class Handler {
                                             book_date,\
                                             is_free\
                                     FROM lich_hen\
-                                    WHERE status IS NULL) d\
+                                    WHERE status IS NULL AND khach_hang_xe_id=?) d\
                         ON a.id = d.khach_hang_xe_id\
-                WHERE a.id = ? AND a.khach_hang_id = b.id AND a.loai_xe_id = c.id", [khach_hang_xe_id]
+                WHERE a.id = ? AND a.khach_hang_id = b.id AND a.loai_xe_id = c.id", [khach_hang_xe_id, khach_hang_xe_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
@@ -448,24 +448,21 @@ class Handler {
     addCallout(req, res, next) {
         let khach_hang_xe_id = req.params.khach_hang_xe_id
         let callout = req.json_data
+        callout.is_free = (callout.is_free ? 1 : 0)
+        callout.book_date = callout.book_date.replace('T',' ').replace('Z','')
+
         let sql = "INSERT INTO goi_ra (khach_hang_xe_id,\
                         ket_qua_goi_ra_id,\
-                        y_kien_mua_xe_id,\
                         note,\
-                        call_date,\
-                        book_date)\
+                        call_date)\
                     VALUES (?,\
                     ?,\
                     ?,\
-                    ?,\
-                    strftime('%s', datetime('now', 'localtime')),\
-                    strftime ('%s', ?))"
+                    strftime('%s', datetime('now', 'localtime')))"
         let params = [
             khach_hang_xe_id,
             callout.ket_qua_goi_ra_id,
-            callout.y_kien_mua_xe_id,
-            callout.note,
-            callout.book_date
+            callout.note
         ]
 
         db.runSql(sql, params).then(result => {
@@ -474,10 +471,40 @@ class Handler {
             sql = "update khach_hang set goi_ra_id_last=?, last_call_out_date=strftime('%s', datetime('now', 'localtime')) ,next_book_date=strftime('%s',?) where id=(select khach_hang_id from khach_hang_xe where id=?)"
             params = [result.lastID, callout.book_date, khach_hang_xe_id]
 
-            return db.runSql(sql, params).then(result => {
+            return db.runSql(sql, params)//.then(result => {
+                // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+                // res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công', count:result.changes, id:result.lastID}))
+            // })
+        }).then(data => {
+            if (!callout.book_date) {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công', count:result.changes, id:result.lastID}))
-            })
+                res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
+            } else {
+                // Finish tat ca lich hen truoc do
+                sql = "UPDATE lich_hen SET status=1, update_datetime=strftime('%s', datetime('now', 'localtime')) WHERE khach_hang_xe_id=? and book_date < strftime('%s', datetime('now', 'localtime'))"
+                params = [khach_hang_xe_id]
+                db.runSql(sql, params)
+
+                sql = "INSERT INTO lich_hen (khach_hang_xe_id,\
+                            dich_vu_id,\
+                            book_date,\
+                            is_free)\
+                        VALUES (?,\
+                        ?,\
+                        strftime('%s', ?),\
+                        ?)"
+                params = [
+                    khach_hang_xe_id,
+                    callout.dich_vu_id,
+                    callout.book_date,
+                    callout.is_free
+                ]
+
+                return db.runSql(sql, params).then(result => {
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+                    res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công', count:result.changes, id:result.lastID}))
+                })
+            }            
         })
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
@@ -502,6 +529,11 @@ class Handler {
         db.runSql(sql, params).then(result => {
             return result
         }).then(async (result) => {
+            // khi da thuc hien bao duong, thi cac lich hen truoc do coi nhu finished
+            sql = "UPDATE lich_hen SET status=1, update_datetime=strftime('%s', datetime('now', 'localtime')) WHERE khach_hang_xe_id=? and book_date < strftime('%s', datetime('now', 'localtime'))"
+            params = [khach_hang_xe_id]
+            db.runSql(sql, params)
+
             sql = "update khach_hang\
                     set next_book_date = NULL,\
                     bao_duong_id_last=?,\
