@@ -27,7 +27,7 @@ class Handler {
                 return {khach_hang_id: row.khach_hang_id}
             } else { // chua ton tai thi them moi Khach hang, dong thoi them moi du lieu xe
                 // Them moi Khach hang
-                let sql = "INSERT INTO khach_hang (full_name, province_code, district_code, precinct_code, phone, birthday, sex, full_name_no_sign) VALUES (?,?,?,?,?,strftime('%s',?),?,?)"
+                let sql = "INSERT INTO khach_hang (full_name, province_code, district_code, precinct_code, phone, birthday, sex, full_name_no_sign, last_visit_date) VALUES (?,?,?,?,?,strftime('%s',?),?,?,strftime('%s',?))"
                 let params = [customer.full_name,
                     customer.province_code,
                     customer.district_code,
@@ -35,7 +35,8 @@ class Handler {
                     customer.phone,
                     customer.birthday,
                     customer.sex,
-                    customer.full_name_no_sign
+                    customer.full_name_no_sign,
+                    customer.buy_date,
                 ]
                 let result = await db.runSql(sql, params).then(result => result).catch(err => err)
                 return result.hasOwnProperty('lastID') ? {khach_hang_id: result.lastID} : Promise.reject(result)
@@ -90,7 +91,8 @@ class Handler {
                 CASE a.sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,\
                 strftime ('%d/%m/%Y', a.next_book_date, 'unixepoch') AS next_book_date,\
                 strftime ('%d/%m/%Y', a.last_call_out_date, 'unixepoch') AS last_call_out_date,\
-                strftime ('%d/%m/%Y', a.last_maintance_date, 'unixepoch') AS last_maintance_date"
+                strftime ('%d/%m/%Y', a.last_maintance_date, 'unixepoch') AS last_maintance_date,\
+                strftime ('%d/%m/%Y', a.last_visit_date, 'unixepoch') AS last_visit_date"
 
         switch (filter) {
             case 'birthday':
@@ -103,21 +105,21 @@ class Handler {
             case 'coming':
                 sql += " FROM khach_hang a\
                     WHERE (next_book_date - strftime ('%s', 'now')) / 60 / 60 / 24 <= 7\
-                    ORDER BY next_book_date, full_name_no_sign\
+                    ORDER BY a.next_book_date, full_name_no_sign\
                     LIMIT 20"
                 break;
 
             case 'passive':
                 sql += " FROM khach_hang a\
-                    WHERE last_maintance_date IS NULL OR (strftime ('%s', 'now') - last_maintance_date) / 60 / 60 / 24 / 30 >= 6\
-                    ORDER BY last_maintance_date, full_name_no_sign\
+                    WHERE last_visit_date IS NULL OR (strftime ('%s', 'now') - last_visit_date) / 60 / 60 / 24 / 30 >= 6\
+                    ORDER BY a.last_visit_date, full_name_no_sign\
                     LIMIT 20"
                 break;
 
             case 'active':
                 sql += " FROM khach_hang a\
-                    WHERE (strftime ('%s', 'now') - last_maintance_date) / 60 / 60 / 24 / 30 < 6\
-                    ORDER BY last_maintance_date, full_name_no_sign\
+                    WHERE (strftime ('%s', 'now') - last_visit_date) / 60 / 60 / 24 / 30 < 6\
+                    ORDER BY a.last_visit_date, full_name_no_sign\
                     LIMIT 20"
                 break;
 
@@ -537,7 +539,8 @@ class Handler {
             sql = "update khach_hang\
                     set next_book_date = NULL,\
                     bao_duong_id_last=?,\
-                    last_maintance_date=strftime('%s', datetime('now', 'localtime'))\
+                    last_maintance_date=strftime('%s', datetime('now', 'localtime')),\
+                    last_visit_date=strftime('%s', datetime('now', 'localtime'))\
                 where id=(select max(khach_hang_id) from khach_hang_xe where id=?)"
             params = [result.lastID, khach_hang_xe_id]
 
