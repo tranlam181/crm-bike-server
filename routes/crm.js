@@ -33,6 +33,9 @@ router.get('/category/call-results'
 router.get('/category/maintance-types'
     , categoryHandler.getMaintanceTypes
 );
+router.get('/category/kieu-bao-duongs'
+    , categoryHandler.getKieuBaoDuongs
+);
 router.get('/category/service-types'
     , categoryHandler.getServiceTypes
 );
@@ -48,6 +51,9 @@ router.get('/customers/:khach_hang_id'
 );
 router.get('/customers/:khach_hang_id/bikes'
     , customerHanlder.getCustomerBikes
+);
+router.get('/customers/:khach_hang_id/maintances'
+    , customerHanlder.getCustomerMaintances
 );
 router.get('/customers-bikes/:khach_hang_xe_id'
     , customerHanlder.getCustomerBikeInfo

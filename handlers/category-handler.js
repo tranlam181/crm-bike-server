@@ -120,7 +120,7 @@ class Handler {
     }
 
     getCallResults(req, res, next) {
-        db.getRsts("select id,name from  dm_ket_qua_goi_ra where status is null order by name"
+        db.getRsts("select id,name from  dm_ket_qua_goi_ra where status is null order by order_"
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
@@ -144,6 +144,23 @@ class Handler {
                     AND ((ifnull(?,'') = '' OR name_no_sign LIKE '%' || UPPER(?) || '%' )) \
                     ORDER BY name_no_sign\
                     limit 20", [filter, filter]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getKieuBaoDuongs(req, res, next) {
+        db.getRsts("select id,name \
+                    from  dm_kieu_bao_duong \
+                    ORDER BY id", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
