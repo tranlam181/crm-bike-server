@@ -100,7 +100,7 @@ class Handler {
             case 'coming':
                 sql += " ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result \
                     FROM khach_hang a\
-                    WHERE (next_book_date - strftime ('%s', 'now')) / 60 / 60 / 24 <= 7\
+                    WHERE next_book_date <= strftime('%s', date('now', '+10 day')) \
                     ORDER BY a.next_book_date, full_name_no_sign\
                     LIMIT 30"
                 break;
@@ -109,9 +109,9 @@ class Handler {
                 sql += " ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result \
                     FROM khach_hang a\
                     WHERE last_visit_date IS NULL \
-                        OR (strftime ('%s', 'now') - last_visit_date) / 60 / 60 / 24 / 30 >= 6\
+                        OR strftime ('%s', date('now', '-6 month')) >= last_visit_date\
                     ORDER BY (CASE\
-                        WHEN a.ket_qua_goi_ra_id IN (9, 10) AND (strftime ('%s', 'now') - a.last_call_out_date) / 60 / 60 / 24 >= 3 THEN 1\
+                        WHEN a.ket_qua_goi_ra_id IN (9, 10) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1\
                         WHEN a.ket_qua_goi_ra_id IS NULL THEN 2\
                         ELSE 99\
                     END)\
@@ -121,14 +121,13 @@ class Handler {
             case 'active':
                 sql += " ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result \
                     FROM khach_hang a\
-                    WHERE (strftime ('%s', 'now') - a.last_visit_date) / 60 / 60 / 24 / 30 < 6\
-                    ORDER BY   (CASE\
-                        WHEN (a.ket_qua_goi_ra_id IN (9, 10) \
-                                AND (strftime ('%s', 'now') - a.last_call_out_date) / 60 / 60 / 24 >= 3)\
-                            OR (strftime ('%s', 'now') - a.last_visit_date) / 60 / 60 / 24 / 30 = 2 THEN 1\
-                        WHEN a.ket_qua_goi_ra_id IS NULL THEN 2\
-                        ELSE 99\
-                    END)\
+                    WHERE strftime ('%s', date('now', '-6 month')) < a.last_visit_date\
+                    ORDER BY \
+                        (CASE WHEN a.ket_qua_goi_ra_id IN (9, 10) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1\
+                              WHEN IFNULL(a.ket_qua_goi_ra_id, 0) NOT IN (9, 10) AND a.last_visit_date >= strftime ('%s', date('now', '-2 month', '-14 day')) AND a.last_visit_date <= strftime ('%s', date('now', '-2 month', '+7 day')) THEN 2\
+                              WHEN a.last_visit_date < strftime ('%s', date('now', '-2 month', '-14 day')) THEN 3\
+                              ELSE 99\
+                        END)\
                     LIMIT 30"
                 break;
 
@@ -139,23 +138,29 @@ class Handler {
                     FROM khach_hang a, khach_hang_xe b, dm_loai_xe c\
                     WHERE	  a.id = b.khach_hang_id\
                         AND b.y_kien_mua_xe_id IS NULL\
-                        AND (strftime ('%s', 'now') - b.buy_date) / 60 / 60 / 24 >= 10\
+                        AND strftime ('%s', date('now', '-10 day')) >= b.buy_date\
                         AND b.loai_xe_id = c.id\
                     ORDER BY b.buy_date\
                     LIMIT 30"
                 break;
 
             case 'after3MaintanceDate':
-                sql += " , c.id as bao_duong_id\
-                        , strftime ('%d/%m/%Y', c.maintance_date, 'unixepoch') AS maintance_date\
-                        , (select max(name) from dm_kieu_bao_duong where id=c.kieu_bao_duong_id) as maintance_name\
-                    FROM bao_duong c, khach_hang_xe b, khach_hang a\
-                    WHERE	  (strftime ('%s', 'now') - c.maintance_date) / 60 / 60 / 24 >= 0\
-                        AND c.feedback IS NULL\
-                        AND c.khach_hang_xe_id = b.id\
-                        AND b.khach_hang_id = a.id\
-                    ORDER BY c.maintance_date\
-                    LIMIT 30"
+                sql += ` , c.id as bao_duong_id
+                        , strftime ('%d/%m/%Y', c.maintance_date, 'unixepoch') AS maintance_date
+                        , (select max(name) from dm_kieu_bao_duong where id=c.kieu_bao_duong_id) as maintance_name
+                        , c.feedback
+                        , c.is_complain
+                        , (SELECT MAX(name) FROM dm_loai_xe WHERE id=b.loai_xe_id) AS bike_name
+                    FROM bao_duong c, khach_hang_xe b, khach_hang a
+                    WHERE
+                        (
+                            (  strftime ('%s', date('now', '-3 day')) >= c.maintance_date AND c.feedback IS NULL )
+                            OR c.tracking_status = 1
+                        )
+                        AND c.khach_hang_xe_id = b.id
+                        AND b.khach_hang_id = a.id
+                    ORDER BY IFNULL(c.is_complain, 99), c.maintance_date
+                    LIMIT 30`
                 break;
 
             default:
@@ -254,14 +259,15 @@ class Handler {
                             (select max(name) From dm_loai_xe where id=b.loai_xe_id) bike_name,\
                             (select max(name) from dm_kieu_bao_duong where id=a.kieu_bao_duong_id) as maintance_name,\
                             a.total_price,\
-                            a.feedback\
+                            a.feedback,\
+                            a.is_complain\
                     FROM   bao_duong a, khach_hang_xe b\
                     WHERE   a.khach_hang_xe_id IN (SELECT   id\
                                                     FROM   khach_hang_xe\
                                                     WHERE   khach_hang_id = ?)\
                             AND a.khach_hang_xe_id = b.id\
                     ORDER BY   a.maintance_date DESC\
-                    LIMIT 10", [khach_hang_id]
+                    LIMIT 5", [khach_hang_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
@@ -320,6 +326,7 @@ class Handler {
                     d.name AS bike_name,\
                     strftime ('%d/%m/%Y', a.maintance_date, 'unixepoch') AS maintance_date\
                     ,(SELECT MAX(name) FROM DM_KIEU_BAO_DUONG WHERE id=a.kieu_bao_duong_id) AS maintance_name\
+                    ,a.feedback\
             FROM bao_duong a,\
                 khach_hang_xe b,\
                 khach_hang c,\
@@ -429,11 +436,12 @@ class Handler {
         feedback.is_free = (feedback.is_free ? 1 : 0)
         feedback.book_date = feedback.book_date.replace('T',' ').replace('Z','')
 
-        let sql = "UPDATE bao_duong \
-                    SET feedback=?\
-                        , feedback_date=strftime('%s', datetime('now', 'localtime'))\
-                        , is_complain=?\
-                    WHERE id=?"
+        let sql = `UPDATE bao_duong
+                    SET feedback=?
+                        , feedback_date=strftime('%s', datetime('now', 'localtime'))
+                        , is_complain=?
+                        , tracking_status=${feedback.is_complain == 1 ? 1 : 0}
+                    WHERE id=?`
         let params = [
             feedback.feedback,
             feedback.is_complain,
@@ -467,13 +475,16 @@ class Handler {
                 return db.runSql(sql, params)
             }            
         }).then(obj => {
-            sql = "UPDATE khach_hang\
-                    SET last_call_out_date = strftime ('%s', datetime ('now', 'localtime')), next_book_date = strftime ('%s', ?)\
-                    WHERE id = (SELECT MAX (khach_hang_id)\
-                                FROM khach_hang_xe\
-                                WHERE id = (SELECT MAX (khach_hang_xe_id)\
-                                            FROM bao_duong\
-                                            WHERE id = ?))"
+            sql = `UPDATE khach_hang
+                    SET last_call_out_date = strftime ('%s', datetime ('now', 'localtime'))
+                        , next_book_date = strftime ('%s', ?)
+                        , goi_ra_id = NULL
+                        , ket_qua_goi_ra_id = NULL
+                    WHERE id = (SELECT MAX (khach_hang_id)
+                                FROM khach_hang_xe
+                                WHERE id = (SELECT MAX (khach_hang_xe_id)
+                                            FROM bao_duong
+                                            WHERE id = ?))`
             params = [
                 feedback.book_date,
                 bao_duong_id
@@ -590,6 +601,12 @@ class Handler {
                         update_datetime=strftime('%s', datetime('now', 'localtime')) \
                     WHERE khach_hang_xe_id=? AND book_date < strftime('%s', datetime('now', 'localtime'))"
             params = [khach_hang_xe_id]
+            db.runSql(sql, params)
+            // khi da thuc hien bao duong, thi cac tracking_status dich vu cac lan truoc coi nhu finished
+            sql = ` UPDATE bao_duong
+                    SET tracking_status = 0
+                    WHERE khach_hang_xe_id=? AND tracking_status = 1 AND id < ?`
+            params = [khach_hang_xe_id, result.lastID]
             db.runSql(sql, params)
 
             sql = "update khach_hang\
