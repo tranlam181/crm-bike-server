@@ -499,6 +499,61 @@ class Handler {
         })
     }
 
+    addSchedule(req, res, next) {
+        console.log('addSchedule');
+        
+        let bao_duong_id = req.params.bao_duong_id
+        let schedule = req.json_data
+        schedule.is_free = (schedule.is_free ? 1 : 0)
+        schedule.book_date = schedule.book_date.replace('T',' ').replace('Z','')
+        let sql = ''
+        let params = []
+        
+        if (!schedule.book_date) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'NOK', message:'Bạn phải nhập ngày hẹn'}))
+        } else {
+            sql = "INSERT INTO lich_hen (khach_hang_xe_id,\
+                        dich_vu_id,\
+                        book_date,\
+                        is_free)\
+                    VALUES ((select max(khach_hang_xe_id) from bao_duong where id=?),\
+                    ?,\
+                    strftime('%s', ?),\
+                    ?)"
+            params = [
+                bao_duong_id,
+                schedule.dich_vu_id,
+                schedule.book_date,
+                schedule.is_free
+            ]
+
+            db.runSql(sql, params).then(obj => {
+                sql = `UPDATE khach_hang
+                SET last_call_out_date = strftime ('%s', datetime ('now', 'localtime'))
+                    , next_book_date = strftime ('%s', ?)
+                    , goi_ra_id = NULL
+                    , ket_qua_goi_ra_id = NULL
+                WHERE id = (SELECT MAX (khach_hang_id)
+                            FROM khach_hang_xe
+                            WHERE id = (SELECT MAX (khach_hang_xe_id)
+                                        FROM bao_duong
+                                        WHERE id = ?))`
+                params = [
+                    schedule.book_date,
+                    bao_duong_id
+                ]
+                return db.runSql(sql, params).then(result => {
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+                    res.end(JSON.stringify({status:'OK', msg:'Đặt lịch hẹn thành công', count:result.changes, id:result.lastID}))
+                })
+            })
+            .catch(err => {
+                res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            })
+        }
+    }
+
     addCallout(req, res, next) {
         let khach_hang_xe_id = req.params.khach_hang_xe_id
         let callout = req.json_data

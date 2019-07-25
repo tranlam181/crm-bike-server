@@ -68,6 +68,10 @@ router.put('/maintances/:bao_duong_id'
     , postHandler.jsonProcess
     , customerHanlder.updateFeedbackAfterMaintance
 );
+router.post('/maintances/:bao_duong_id/schedules'
+    , postHandler.jsonProcess
+    , customerHanlder.addSchedule
+);
 router.put('/customers/bikes/:khach_hang_xe_id'
     , postHandler.jsonProcess
     , customerHanlder.updateFeedbackAfterBuy
