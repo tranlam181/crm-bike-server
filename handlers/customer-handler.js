@@ -17,17 +17,43 @@ class Handler {
         customer.full_name_no_sign = removeVietnameseFromString(customer.full_name).toUpperCase()
         customer.full_name = capitalizeFirstLetter(customer.full_name.trim())
         customer.phone = customer.phone.trim()
+        customer.province_code = customer.province_code ? customer.province_code : 'QTR'
 
         // 1. check xem customer da ton tai chua, check theo [full_name, phone]
-        let sql = 'SELECT MAX(id) as khach_hang_id, COUNT(1) AS count FROM khach_hang WHERE full_name_no_sign=? AND phone=?'
+        let sql = `SELECT MAX(id) as khach_hang_id, COUNT(1) AS count 
+                    FROM khach_hang 
+                    WHERE full_name_no_sign=? AND phone=?`
 
-        db.getRst(sql, [customer.full_name_no_sign, customer.phone])
-        .then(async (row) => {
+        db.getRst(sql, [customer.full_name_no_sign, customer.phone]).then(async (row) => {
             if (row.count > 0) { // ton tai roi thi khong can them moi Khach hang
                 return {khach_hang_id: row.khach_hang_id}
             } else { // chua ton tai thi them moi Khach hang, dong thoi them moi du lieu xe
                 // Them moi Khach hang
-                let sql = "INSERT INTO khach_hang (full_name, province_code, district_code, precinct_code, phone, birthday, sex, full_name_no_sign, last_visit_date) VALUES (?,?,?,?,?,strftime('%s',?),?,?,strftime('%s',?))"
+                let sql = `INSERT INTO khach_hang 
+                        (   full_name, 
+                            province_code, 
+                            district_code, 
+                            precinct_code, 
+                            phone, 
+                            birthday, 
+                            sex, 
+                            full_name_no_sign, 
+                            last_visit_date,
+                            cua_hang_id
+                        ) 
+                        VALUES 
+                        (
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            strftime('%s',?),
+                            ?,
+                            ?,
+                            strftime('%s',?),
+                            ?
+                        )`
                 let params = [customer.full_name,
                     customer.province_code,
                     customer.district_code,
@@ -37,6 +63,7 @@ class Handler {
                     customer.sex,
                     customer.full_name_no_sign,
                     customer.buy_date,
+                    customer.shop_id,
                 ]
                 let result = await db.runSql(sql, params).then(result => result).catch(err => err)
                 return result.hasOwnProperty('lastID') ? {khach_hang_id: result.lastID} : Promise.reject(result)
@@ -44,7 +71,21 @@ class Handler {
         })
         .then(customerInfo => {
             // them du lieu xe
-            let sql = "INSERT INTO khach_hang_xe (khach_hang_id, cua_hang_id, loai_xe_id, buy_date, bike_number) VALUES (?,?,?,strftime('%s',?),?)"
+            let sql = `REPLACE INTO khach_hang_xe 
+                (   khach_hang_id, 
+                    cua_hang_id, 
+                    loai_xe_id, 
+                    buy_date, 
+                    bike_number
+                ) 
+                VALUES 
+                (
+                    ?,
+                    ?,
+                    ?,
+                    strftime('%s',?),
+                    ?
+                )`
             let params = [
                 customerInfo.khach_hang_id,
                 customer.shop_id,
@@ -55,11 +96,11 @@ class Handler {
             if (customer.bike_type_id) {
                 return db.runSql(sql, params).then(result => {
                     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                    res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', count:result.changes, khach_hang_id:customerInfo.khach_hang_id}))
+                    res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', count:result.changes, khach_hang_id:customerInfo.khach_hang_id, STT: customer.STT}))
                 })
             } else {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', khach_hang_id:customerInfo.khach_hang_id}))
+                res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', khach_hang_id:customerInfo.khach_hang_id, STT: customer.STT}))
             }
         })
         .catch(err => {
@@ -75,18 +116,19 @@ class Handler {
 
         if (!s || s=='undefined') s = ''
 
-        sql = "SELECT a.id,\
-                full_name,\
-                (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
-                a.phone,\
-                strftime ('%d/%m/%Y', a.birthday, 'unixepoch') AS birthday,\
-                CASE a.sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,\
-                strftime ('%d/%m/%Y', a.next_book_date, 'unixepoch') AS next_book_date,\
-                strftime ('%d/%m/%Y', a.last_call_out_date, 'unixepoch') AS last_call_out_date,\
-                strftime ('%d/%m/%Y', a.last_maintance_date, 'unixepoch') AS last_maintance_date,\
-                strftime ('%d/%m/%Y', a.last_visit_date, 'unixepoch') AS last_visit_date"
+        sql = `SELECT a.id,
+                full_name,
+                (SELECT MAX (name)
+                    FROM dm_dia_ly
+                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,
+                a.phone,
+                strftime ('%d/%m/%Y', a.birthday, 'unixepoch') AS birthday,
+                CASE a.sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,
+                strftime ('%d/%m/%Y', a.next_book_date, 'unixepoch') AS next_book_date,
+                strftime ('%d/%m/%Y', a.last_call_out_date, 'unixepoch') AS last_call_out_date,
+                strftime ('%d/%m/%Y', a.last_maintance_date, 'unixepoch') AS last_maintance_date,
+                strftime ('%d/%m/%Y', a.last_visit_date, 'unixepoch') AS last_visit_date,
+                (SELECT MAX(name) FROM dm_cua_hang where id=a.cua_hang_id) AS shop_name`
 
         switch (filter) {
             case 'birthday':
@@ -284,26 +326,27 @@ class Handler {
     getCustomerBikeInfo(req, res, next) {
         let khach_hang_xe_id = req.params.khach_hang_xe_id
 
-        db.getRst("SELECT a.id,\
-                        b.full_name,\
-                        b.phone,\
-                        strftime ('%d/%m/%Y', b.birthday, 'unixepoch') AS birthday,\
-                        strftime ('%d/%m/%Y', a.buy_date, 'unixepoch') AS buy_date,\
-                        c.name AS bike_name,\
-                        (SELECT MAX (name) FROM dm_dich_vu WHERE id = d.dich_vu_id) AS service_name,\
-                        strftime ('%d/%m/%Y', d.book_date, 'unixepoch') AS book_date,\
-                        d.is_free\
-                FROM khach_hang_xe a,\
-                    khach_hang b,\
-                    dm_loai_xe c\
-                    LEFT OUTER JOIN (SELECT khach_hang_xe_id,\
-                                            dich_vu_id,\
-                                            book_date,\
-                                            is_free\
-                                    FROM lich_hen\
-                                    WHERE status IS NULL AND khach_hang_xe_id=?) d\
-                        ON a.id = d.khach_hang_xe_id\
-                WHERE a.id = ? AND a.khach_hang_id = b.id AND a.loai_xe_id = c.id", [khach_hang_xe_id, khach_hang_xe_id]
+        db.getRst(`SELECT a.id,
+                        a.bike_number,
+                        b.full_name,
+                        b.phone,
+                        strftime ('%d/%m/%Y', b.birthday, 'unixepoch') AS birthday,
+                        strftime ('%d/%m/%Y', a.buy_date, 'unixepoch') AS buy_date,
+                        c.name AS bike_name,
+                        (SELECT MAX (name) FROM dm_dich_vu WHERE id = d.dich_vu_id) AS service_name,
+                        strftime ('%d/%m/%Y', d.book_date, 'unixepoch') AS book_date,
+                        d.is_free
+                FROM khach_hang_xe a,
+                    khach_hang b,
+                    dm_loai_xe c
+                    LEFT OUTER JOIN (SELECT khach_hang_xe_id,
+                                            dich_vu_id,
+                                            book_date,
+                                            is_free
+                                    FROM lich_hen
+                                    WHERE status IS NULL AND khach_hang_xe_id=?) d
+                        ON a.id = d.khach_hang_xe_id
+                WHERE a.id = ? AND a.khach_hang_id = b.id AND a.loai_xe_id = c.id`, [khach_hang_xe_id, khach_hang_xe_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
@@ -371,12 +414,12 @@ class Handler {
         feedback.is_free = (feedback.is_free ? 1 : 0)
         feedback.book_date = feedback.book_date.replace('T',' ').replace('Z','')
 
-        let sql = "UPDATE khach_hang_xe \
-                    SET bike_number=?\
-                        , y_kien_mua_xe_id=?\
-                        , feedback_date=strftime('%s', datetime('now', 'localtime'))\
-                        , note=?\
-                    WHERE id=?"
+        let sql = `UPDATE khach_hang_xe
+                    SET bike_number=IFNULL(bike_number,?)
+                        , y_kien_mua_xe_id=?
+                        , feedback_date=strftime('%s', datetime('now', 'localtime'))
+                        , note=?
+                    WHERE id=?`
         let params = [
             feedback.bike_number,
             feedback.y_kien_mua_xe_id,
@@ -508,7 +551,7 @@ class Handler {
         schedule.book_date = schedule.book_date.replace('T',' ').replace('Z','')
         let sql = ''
         let params = []
-        
+
         if (!schedule.book_date) {
             res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
             res.end(JSON.stringify({status:'NOK', message:'Bạn phải nhập ngày hẹn'}))
