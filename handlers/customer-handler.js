@@ -148,16 +148,16 @@ class Handler {
                 break;
 
             case 'passive':
-                sql += " ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result \
-                    FROM khach_hang a\
-                    WHERE last_visit_date IS NULL \
-                        OR strftime ('%s', date('now', '-6 month')) >= last_visit_date\
-                    ORDER BY (CASE\
-                        WHEN a.ket_qua_goi_ra_id IN (9, 10) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1\
-                        WHEN a.ket_qua_goi_ra_id IS NULL THEN 2\
-                        ELSE 99\
-                    END)\
-                    LIMIT 30"
+                sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result 
+                    FROM khach_hang a
+                    WHERE last_visit_date IS NULL 
+                        OR strftime ('%s', date('now', '-6 month')) >= last_visit_date
+                    ORDER BY (CASE
+                        WHEN a.ket_qua_goi_ra_id IN (9, 10) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
+                        WHEN a.ket_qua_goi_ra_id IS NULL THEN 2
+                        ELSE 99
+                    END), a.last_call_out_date
+                    LIMIT 30`
                 break;
 
             case 'active':
@@ -454,10 +454,11 @@ class Handler {
                 return db.runSql(sql, params)
             }            
         }).then(obj => {
-            sql = "UPDATE khach_hang\
-                SET last_call_out_date = strftime('%s', datetime('now', 'localtime'))\
-                    , next_book_date = strftime('%s', ?)\
-                WHERE id = (select max(khach_hang_id) FROM khach_hang_xe where id=?)"
+            sql = `UPDATE khach_hang
+                    SET last_call_out_date = strftime('%s', datetime('now', 'localtime'))
+                    , next_book_date = strftime('%s', ?)
+                    , ket_qua_goi_ra_id = 2 -- KH dat hen
+                WHERE id = (select max(khach_hang_id) FROM khach_hang_xe where id=?)`
             params = [
                 feedback.book_date,
                 khach_hang_xe_id
@@ -522,7 +523,7 @@ class Handler {
                     SET last_call_out_date = strftime ('%s', datetime ('now', 'localtime'))
                         , next_book_date = strftime ('%s', ?)
                         , goi_ra_id = NULL
-                        , ket_qua_goi_ra_id = NULL
+                        , ket_qua_goi_ra_id = 2 -- KH dat hen
                     WHERE id = (SELECT MAX (khach_hang_id)
                                 FROM khach_hang_xe
                                 WHERE id = (SELECT MAX (khach_hang_xe_id)

@@ -1,3 +1,3 @@
 module.exports = {
-  secret: 'Cuong.dq@3500888'
+  secret: 'VDqz82RMnVY9q3EB'
 };

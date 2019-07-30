@@ -15,8 +15,8 @@ function main(isHttp, isHttps) {
   //CORS handle
   app.use(require('./handlers/cors-handler').cors);
 
-  //su dung auth user -- xac thuc bang server proxy
-  //app.use('/crm/auth',  require('./routes/auth-proxy'));
+  //su dung auth user
+  app.use('/crm/auth',  require('./routes/auth'));
 
   app.use('/crm/api', require('./routes/crm'));
 
