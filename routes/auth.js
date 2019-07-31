@@ -8,10 +8,18 @@ const postHandler = require('../utils/post-handler');
 
 const authHandler = require('../handlers/auth-handler').Handler;
 
-router.post('/login', authHandler.login)
+router.post('/login'
+    , postHandler.jsonProcess
+    , authHandler.login)
+
+router.post('/register'
+    , postHandler.jsonProcess
+    , authHandler.register)
+
 router.post('/logout', (req, res, next) => {
     res.end(JSON.stringify({status: "OK"}))
 })
+
 router.post('/refresh_token', (req, res, next) => {
     res.end(JSON.stringify({status: "OK"}))
 })
