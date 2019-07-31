@@ -12,11 +12,8 @@
 
 //khai báo máy chủ xác minh ở đâu? như của facebook, google, ....
 const authServer = 'https://c3.mobifone.vn/api';
-
-
 const jwt = require('jsonwebtoken');
 const url = require('url');
-
 const proxy = require('request'); //doi tuong yeu cau proxy truy van POST/GET
 
 var tokenSession = []; //luu lai session lam viec

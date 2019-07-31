@@ -61,7 +61,7 @@ class Handler {
                 // login thanh cong, return token
                 // Loai bo password, nhay cam
                 delete userDB.password
-                
+
                 const token = jwt.sign(userDB, jwtConfig.secret, {
                     expiresIn: jwtConfig.tokenLife
                 })
@@ -75,6 +75,10 @@ class Handler {
                 return
             }
         })
+    }
+
+    logout(req, res, next) {
+        res.status(200).end(JSON.stringify({status:'OK', msg:`User ${req.user.user_name} logout thành công`}))
     }
 }
 
