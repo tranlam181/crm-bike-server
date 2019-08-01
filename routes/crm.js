@@ -3,7 +3,7 @@
 const router = require('express').Router();
 
 const postHandler = require('../utils/post-handler');
-const tokenHandler = require('../utils/token-proxy');
+const tokenUtil = require('../utils/token-util');
 
 //test phan quyen kiem tra quyen, lay quyen
 const categoryHandler = require("../handlers/category-handler").Handler;
@@ -43,10 +43,11 @@ router.post('/customers'
     , postHandler.jsonProcess
     , customerHanlder.addCustomer
 );
-router.get('/customers'
+router.get('/customers'    
     , customerHanlder.getCustomers
 );
 router.get('/customers/:khach_hang_id'
+    , tokenUtil.checkToken
     , customerHanlder.getCustomer
 );
 router.get('/customers/:khach_hang_id/bikes'

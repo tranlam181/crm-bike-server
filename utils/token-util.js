@@ -2,12 +2,12 @@ const jwt = require('jsonwebtoken')
 const jwtConfig = require('../jwt/jwt-config')
 
 var verifyToken = (token, secret) => {
-    return new Promise((reso, rej) => {
+    return new Promise((resolve, rej) => {
         jwt.verify(token, secret, (err, decoded) => {
             if (err) {
                 return rej(err)
             }
-            reso(decoded)
+            resolve(decoded)
         })
     })
 }

@@ -43,7 +43,12 @@ class Handler {
         let user = req.json_data
         user.user_name = user.user_name.toUpperCase().trim()
         user.password = user.password.trim()
-        let sql = `SELECT id, user_name, password, cua_hang_id FROM user WHERE user_name = ?`
+        let sql = `SELECT id, 
+                        user_name, 
+                        password, 
+                        cua_hang_id,
+                        (SELECT MAX(name) FROM dm_cua_hang WHERE id=user.cua_hang_id) AS shop_name
+                    FROM user WHERE user_name = ?`
         let params = [user.user_name]
 
         let userDB = await db.getRst(sql, params)
@@ -67,7 +72,7 @@ class Handler {
                 })
 
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:`User ${user.user_name} login thành công`, token: token}))
+                res.end(JSON.stringify({status:'OK', msg:`User ${user.user_name} login thành công`, token: token, user: userDB}))
                 return
             } else {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -78,6 +83,8 @@ class Handler {
     }
 
     logout(req, res, next) {
+        console.log(req.user);
+        
         res.status(200).end(JSON.stringify({status:'OK', msg:`User ${req.user.user_name} logout thành công`}))
     }
 }
