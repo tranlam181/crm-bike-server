@@ -18,10 +18,10 @@ var checkToken = async (req, res, next) => {
     if (token) {
         try {
             const decoded = await verifyToken(token, jwtConfig.secret)
-            req.user = decoded
+            req.userInfo = decoded
             next()
         } catch(err) {
-            return res.status(401).end(JSON.stringify({status: 'NOK', msg: 'Token invalid'}))    
+            return res.status(401).end(JSON.stringify({status: 'NOK', msg: 'Token invalid'}))
         }
     } else {
         return res.status(403).end(JSON.stringify({status: 'NOK', msg: 'No token founded'}))

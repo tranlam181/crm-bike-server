@@ -20,8 +20,8 @@ class Handler {
         customer.province_code = customer.province_code ? customer.province_code : 'QTR'
 
         // 1. check xem customer da ton tai chua, check theo [full_name, phone]
-        let sql = `SELECT MAX(id) as khach_hang_id, COUNT(1) AS count 
-                    FROM khach_hang 
+        let sql = `SELECT MAX(id) as khach_hang_id, COUNT(1) AS count
+                    FROM khach_hang
                     WHERE full_name_no_sign=? AND phone=?`
 
         db.getRst(sql, [customer.full_name_no_sign, customer.phone]).then(async (row) => {
@@ -29,19 +29,19 @@ class Handler {
                 return {khach_hang_id: row.khach_hang_id}
             } else { // chua ton tai thi them moi Khach hang, dong thoi them moi du lieu xe
                 // Them moi Khach hang
-                let sql = `INSERT INTO khach_hang 
-                        (   full_name, 
-                            province_code, 
-                            district_code, 
-                            precinct_code, 
-                            phone, 
-                            birthday, 
-                            sex, 
-                            full_name_no_sign, 
+                let sql = `INSERT INTO khach_hang
+                        (   full_name,
+                            province_code,
+                            district_code,
+                            precinct_code,
+                            phone,
+                            birthday,
+                            sex,
+                            full_name_no_sign,
                             last_visit_date,
                             cua_hang_id
-                        ) 
-                        VALUES 
+                        )
+                        VALUES
                         (
                             ?,
                             ?,
@@ -71,14 +71,14 @@ class Handler {
         })
         .then(customerInfo => {
             // them du lieu xe
-            let sql = `REPLACE INTO khach_hang_xe 
-                (   khach_hang_id, 
-                    cua_hang_id, 
-                    loai_xe_id, 
-                    buy_date, 
+            let sql = `REPLACE INTO khach_hang_xe
+                (   khach_hang_id,
+                    cua_hang_id,
+                    loai_xe_id,
+                    buy_date,
                     bike_number
-                ) 
-                VALUES 
+                )
+                VALUES
                 (
                     ?,
                     ?,
@@ -148,9 +148,9 @@ class Handler {
                 break;
 
             case 'passive':
-                sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result 
+                sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
                     FROM khach_hang a
-                    WHERE last_visit_date IS NULL 
+                    WHERE last_visit_date IS NULL
                         OR strftime ('%s', date('now', '-6 month')) >= last_visit_date
                     ORDER BY (CASE
                         WHEN a.ket_qua_goi_ra_id IN (9, 10) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
@@ -213,7 +213,7 @@ class Handler {
                     LIMIT 30"
                 params = [s, s, s]
         }
-        
+
         db.getRsts(sql, params).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
@@ -229,6 +229,8 @@ class Handler {
 
     getCustomer(req, res, next) {
         let khach_hang_id = req.params.khach_hang_id
+        console.log(req.userInfo);
+
 
         db.getRst("SELECT id,\
                     full_name,\
@@ -452,7 +454,7 @@ class Handler {
                 ]
 
                 return db.runSql(sql, params)
-            }            
+            }
         }).then(obj => {
             sql = `UPDATE khach_hang
                     SET last_call_out_date = strftime('%s', datetime('now', 'localtime'))
@@ -517,7 +519,7 @@ class Handler {
                 ]
 
                 return db.runSql(sql, params)
-            }            
+            }
         }).then(obj => {
             sql = `UPDATE khach_hang
                     SET last_call_out_date = strftime ('%s', datetime ('now', 'localtime'))
@@ -545,7 +547,7 @@ class Handler {
 
     addSchedule(req, res, next) {
         console.log('addSchedule');
-        
+
         let bao_duong_id = req.params.bao_duong_id
         let schedule = req.json_data
         schedule.is_free = (schedule.is_free ? 1 : 0)
@@ -662,7 +664,7 @@ class Handler {
                     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                     res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công', count:result.changes, id:result.lastID}))
                 })
-            }            
+            }
         })
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
