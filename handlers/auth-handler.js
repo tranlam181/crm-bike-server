@@ -18,8 +18,8 @@ class Handler {
         let result = await db.getRst(sql, params)
         
         if (result.count >= 1) {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:`User ${user.user_name} đã tồn tại rồi`}))
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'NOK', msg:`User ${user.user_name} đã tồn tại rồi`}))
             return
         }
 
@@ -54,8 +54,8 @@ class Handler {
         let userDB = await db.getRst(sql, params)
 
         if (!userDB || !userDB.id) {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:`User ${user.user_name} không tồn tại`}))
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'NOK', msg:`User ${user.user_name} không tồn tại`}))
             return
         }
 
@@ -75,16 +75,14 @@ class Handler {
                 res.end(JSON.stringify({status:'OK', msg:`User ${user.user_name} login thành công`, token: token, user: userDB}))
                 return
             } else {
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:`User ${user.user_name} mật khẩu không đúng`}))
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+                res.end(JSON.stringify({status:'NOK', msg:`User ${user.user_name} mật khẩu không đúng`}))
                 return
             }
         })
     }
 
     logout(req, res, next) {
-        console.log(req.user);
-        
         res.status(200).end(JSON.stringify({status:'OK', msg:`User ${req.user.user_name} logout thành công`}))
     }
 }

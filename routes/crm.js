@@ -40,10 +40,12 @@ router.get('/category/service-types'
     , categoryHandler.getServiceTypes
 );
 router.post('/customers'
+    , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.addCustomer
 );
-router.get('/customers'    
+router.get('/customers'
+    , tokenUtil.checkToken 
     , customerHanlder.getCustomers
 );
 router.get('/customers/:khach_hang_id'
@@ -51,37 +53,47 @@ router.get('/customers/:khach_hang_id'
     , customerHanlder.getCustomer
 );
 router.get('/customers/:khach_hang_id/bikes'
+    , tokenUtil.checkToken 
     , customerHanlder.getCustomerBikes
 );
 router.get('/customers/:khach_hang_id/maintances'
+    , tokenUtil.checkToken 
     , customerHanlder.getCustomerMaintances
 );
 router.get('/customers-bikes/:khach_hang_xe_id'
+    , tokenUtil.checkToken 
     , customerHanlder.getCustomerBikeInfo
 );
 router.get('/customers/maintances/:bao_duong_id'
+    , tokenUtil.checkToken 
     , customerHanlder.getCustomerMaintanceInfo
 );
 router.get('/maintances/:bao_duong_id/details'
+    , tokenUtil.checkToken 
     , customerHanlder.getMaintanceDetails
 );
 router.put('/maintances/:bao_duong_id'
+    , tokenUtil.checkToken 
     , postHandler.jsonProcess
     , customerHanlder.updateFeedbackAfterMaintance
 );
 router.post('/maintances/:bao_duong_id/schedules'
+    , tokenUtil.checkToken 
     , postHandler.jsonProcess
     , customerHanlder.addSchedule
 );
 router.put('/customers/bikes/:khach_hang_xe_id'
+    , tokenUtil.checkToken 
     , postHandler.jsonProcess
     , customerHanlder.updateFeedbackAfterBuy
 );
 router.post('/customers-bikes/:khach_hang_xe_id/callouts'
+    , tokenUtil.checkToken 
     , postHandler.jsonProcess
     , customerHanlder.addCallout
 );
 router.post('/customers-bikes/:khach_hang_xe_id/maintances'
+    , tokenUtil.checkToken 
     , postHandler.jsonProcess
     , customerHanlder.addMaintance
 );
