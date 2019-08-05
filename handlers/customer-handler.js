@@ -11,6 +11,45 @@ const dbFile = './db/database/crm-bike.db';
 const db = new SQLiteDAO(dbFile);
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../utils/utils')
 
+var _importBaoDuong = (maintance, userInfo) => {
+    let total_price = maintance.details.reduce((result, e, idx) => {
+        result += Number(e.price)
+        return result
+    }, 0)
+    let sql = `INSERT INTO bao_duong (khach_hang_xe_id,
+                kieu_bao_duong_id,
+                maintance_date,
+                total_price,
+                update_user,
+                create_datetime )
+            VALUES (?,
+                ?,
+                strftime('%s', ?),
+                ?,
+                ?,
+                strftime('%s', datetime('now', 'localtime'))
+            )`
+    let params = [
+        maintance.khach_hang_xe_id,
+        maintance.kieu_bao_duong_id,
+        maintance.maintance_date,
+        total_price,
+        userInfo.id
+    ]
+
+    db.runSql(sql, params).then(bao_duong_res => {            
+        let placeholder = maintance.details.map((bao_duong, index) => '(?,?,?)').join(',')
+        sql = 'INSERT INTO bao_duong_chi_phi (bao_duong_id, loai_bao_duong_id, price) VALUES ' + placeholder
+
+        params = maintance.details.reduce((result, e, idx) => {
+            result = [...result, bao_duong_res.lastID, e.loai_bao_duong.id, e.price]
+            return result
+        }, [])
+
+        return db.runSql(sql, params)
+    })
+}
+
 class Handler {
     addCustomer(req, res, next) {
         let customer = req.json_data
@@ -41,7 +80,8 @@ class Handler {
                             last_visit_date,
                             cua_hang_id,
                             update_user,
-                            create_datetime
+                            create_datetime,
+                            last_maintance_date
                         )
                         VALUES
                         (
@@ -56,7 +96,8 @@ class Handler {
                             strftime('%s',?),
                             ?,
                             ?,
-                            strftime('%s', datetime('now', 'localtime'))
+                            strftime('%s', datetime('now', 'localtime')),
+                            strftime('%s',?)
                         )`
                 let params = [customer.full_name,
                     customer.province_code,
@@ -66,10 +107,13 @@ class Handler {
                     customer.birthday,
                     customer.sex,
                     customer.full_name_no_sign,
-                    customer.buy_date,
+                    customer.last_visit_date ? customer.last_visit_date : customer.buy_date,
                     customer.shop_id,
-                    req.userInfo.id
+                    req.userInfo.id,
+                    customer.kieu_bao_duong_id ? customer.last_visit_date : null
                 ]
+                console.log(params);
+                
                 let result = await db.runSql(sql, params).then(result => result).catch(err => err)
                 return result.hasOwnProperty('lastID') ? {khach_hang_id: result.lastID} : Promise.reject(result)
             }
@@ -107,6 +151,21 @@ class Handler {
             ]
             if (customer.bike_type_id) {
                 return db.runSql(sql, params).then(result => {
+                    // ton tai loai hinh bao duong thi thuc hien insert cac bang ghi lien quan
+                    if (customer.kieu_bao_duong_id) {
+                        let maintance = {
+                            khach_hang_xe_id: result.lastID,
+                            kieu_bao_duong_id: customer.kieu_bao_duong_id,
+                            shop_id: customer.shop_id,
+                            maintance_date: customer.last_visit_date,
+                            details: [
+                                {loai_bao_duong:{id: 266}, price:customer.price_equip},
+                                {loai_bao_duong:{id: 276}, price:customer.price}
+                            ]                            
+                        }
+                        _importBaoDuong(maintance, req.userInfo)
+                    }
+
                     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                     res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', count:result.changes, khach_hang_id:customerInfo.khach_hang_id, STT: customer.STT}))
                 })
@@ -200,7 +259,8 @@ class Handler {
                     FROM khach_hang a, khach_hang_xe b, dm_loai_xe c
                     WHERE	  a.id = b.khach_hang_id
                         AND b.y_kien_mua_xe_id IS NULL
-                        AND strftime ('%s', date('now', '-10 day')) >= b.buy_date
+                        AND b.buy_date <= strftime ('%s', date('now', '-10 day'))
+                        AND b.buy_date >= strftime ('%s', date('now', '-30 day'))
                         AND b.loai_xe_id = c.id
                         AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY b.buy_date
@@ -218,7 +278,9 @@ class Handler {
                     FROM bao_duong c, khach_hang_xe b, khach_hang a
                     WHERE
                         (
-                            (  strftime ('%s', date('now', '-3 day')) >= c.maintance_date AND c.feedback IS NULL )
+                            (  c.maintance_date <= strftime ('%s', date('now', '-3 day'))
+                                AND c.maintance_date >= strftime ('%s', date('now', '-13 day'))
+                                AND c.feedback IS NULL )
                             OR c.tracking_status = 1
                         )
                         AND c.khach_hang_xe_id = b.id
@@ -802,7 +864,7 @@ class Handler {
             let updateResult = await db.runSql(sql, params)
             return updateResult.hasOwnProperty('lastID') ? result.lastID : Promise.reject(updateResult)
         }).then(bao_duong_id => {
-            let placeholder =  maintance.details.map((bao_duong, index) => '(?,?,?)').join(',')
+            let placeholder = maintance.details.map((bao_duong, index) => '(?,?,?)').join(',')
             sql = 'INSERT INTO bao_duong_chi_phi (bao_duong_id, loai_bao_duong_id, price) VALUES ' + placeholder
 
             params = maintance.details.reduce((result, e, idx) => {

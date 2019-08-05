@@ -14,7 +14,7 @@ var verifyToken = (token, secret) => {
 
 var checkToken = async (req, res, next) => {
     const token = req.headers['x-access-token'] || req.headers['authorization']
-
+    
     if (token) {
         try {
             const decoded = await verifyToken(token, jwtConfig.secret)

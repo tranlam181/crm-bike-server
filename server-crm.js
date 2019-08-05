@@ -50,7 +50,34 @@ function main(isHttp, isHttps) {
     // For https
     const privateKey = fs.readFileSync('cert/api-private-key.pem', 'utf8');
     const certificate = fs.readFileSync('cert/my-certificate.pem', 'utf8');
-    const credentials = { key: privateKey, cert: certificate };
+    const credentials = { 
+        key: privateKey, 
+        cert: certificate,
+        honorCipherOrder: true,
+        ciphers: [
+          'ECDHE-RSA-AES128-GCM-SHA256',
+          'ECDHE-ECDSA-AES128-GCM-SHA256',
+          'ECDHE-RSA-AES256-GCM-SHA384',
+          'ECDHE-ECDSA-AES256-GCM-SHA384',
+          'DHE-RSA-AES128-GCM-SHA256',
+          'ECDHE-RSA-AES128-SHA256',
+          'DHE-RSA-AES128-SHA256',
+          'ECDHE-RSA-AES256-SHA384',
+          'DHE-RSA-AES256-SHA384',
+          'ECDHE-RSA-AES256-SHA256',
+          'DHE-RSA-AES256-SHA256',
+          'HIGH',
+          '!aNULL',
+          '!eNULL',
+          '!EXPORT',
+          '!DES',
+          '!RC4',
+          '!MD5',
+          '!PSK',
+          '!SRP',
+          '!CAMELLIA'
+       ].join(':')
+    };
     const portHttps = process.env.PORT || isHttps;
     
     const httpsServer = require('https').createServer(credentials, app);
