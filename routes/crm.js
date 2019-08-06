@@ -44,6 +44,10 @@ router.post('/customers'
     , postHandler.jsonProcess
     , customerHanlder.addCustomer
 );
+router.delete('/customers/:khach_hang_id'
+    , tokenUtil.checkToken
+    , customerHanlder.delCustomer
+);
 router.get('/customers'
     , tokenUtil.checkToken 
     , customerHanlder.getCustomers

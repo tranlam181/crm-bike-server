@@ -112,7 +112,6 @@ class Handler {
                     req.userInfo.id,
                     customer.kieu_bao_duong_id ? customer.last_visit_date : null
                 ]
-                console.log(params);
                 
                 let result = await db.runSql(sql, params).then(result => result).catch(err => err)
                 return result.hasOwnProperty('lastID') ? {khach_hang_id: result.lastID} : Promise.reject(result)
@@ -175,6 +174,33 @@ class Handler {
             }
         })
         .catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
+
+    async delCustomer(req, res, next) {
+        let khach_hang_id = req.params.khach_hang_id
+
+        //sqlite ON DELETE CASCADE khong hoat dong khi call tu nodejs?
+        //chua hieu vi sao, nen bay gio phai delete thu cong
+        let sql = `DELETE FROM lich_hen WHERE khach_hang_xe_id IN (SELECT MAX(id) FROM khach_hang_xe WHERE khach_hang_id=?)`
+        let params = [khach_hang_id]
+        await db.runSql(sql, params)
+        sql = `DELETE FROM goi_ra WHERE khach_hang_xe_id IN (SELECT MAX(id) FROM khach_hang_xe WHERE khach_hang_id=?)`
+        await db.runSql(sql, params)
+        sql = `DELETE FROM bao_duong_chi_phi WHERE bao_duong_id IN (SELECT id FROM bao_duong WHERE khach_hang_xe_id IN (SELECT MAX(id) FROM khach_hang_xe WHERE khach_hang_id=?))`
+        await db.runSql(sql, params)
+        sql = `DELETE FROM bao_duong WHERE khach_hang_xe_id IN (SELECT MAX(id) FROM khach_hang_xe WHERE khach_hang_id=?)`
+        await db.runSql(sql, params)
+        sql = `DELETE FROM khach_hang_xe WHERE khach_hang_id=?`
+        await db.runSql(sql, params)
+
+        sql = `DELETE FROM khach_hang WHERE id=?`
+
+        return db.runSql(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Xóa Khách hàng thành công', count:result.changes}))
+        }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
