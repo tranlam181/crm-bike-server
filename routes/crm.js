@@ -101,5 +101,8 @@ router.post('/customers-bikes/:khach_hang_xe_id/maintances'
     , postHandler.jsonProcess
     , customerHanlder.addMaintance
 );
-
+router.get('/report-callouts'
+    , tokenUtil.checkToken 
+    , customerHanlder.reportCallout
+);
 module.exports = router;

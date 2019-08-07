@@ -53,10 +53,13 @@ var _importBaoDuong = (maintance, userInfo) => {
 class Handler {
     addCustomer(req, res, next) {
         let customer = req.json_data
-        customer.full_name_no_sign = removeVietnameseFromString(customer.full_name).toUpperCase()
+        customer.full_name_no_sign = removeVietnameseFromString(customer.full_name)
         customer.full_name = capitalizeFirstLetter(customer.full_name.trim())
         customer.phone = customer.phone.trim()
         customer.province_code = customer.province_code ? customer.province_code : 'QTR'
+        if (customer.sex) {
+            customer.sex = customer.sex.toUpperCase() == 'NAM' || customer.sex.toUpperCase() == '1' ? 1 : 0
+        }
 
         // 1. check xem customer da ton tai chua, check theo [full_name, phone]
         let sql = `SELECT MAX(id) as khach_hang_id, COUNT(1) AS count
@@ -206,8 +209,8 @@ class Handler {
     }
 
     getCustomers(req, res, next) {
-        let filter = req.query.filter
-        let s = req.query.s
+        let filter = req.query.filter // birthday|coming loc danh sach gi
+        let s = req.query.s // chuoi tim kiem neu co
         let sql = ''
         let params = []
         let userInfo = req.userInfo
@@ -745,18 +748,21 @@ class Handler {
         callout.book_date = callout.book_date.replace('T',' ').replace('Z','')
 
         let sql = `INSERT INTO goi_ra (khach_hang_xe_id,
+                        cua_hang_id,
                         ket_qua_goi_ra_id,
                         note,
                         call_date,
                         update_user,
                         create_datetime)
                     VALUES (?,
-                    ?,
-                    ?,
-                    strftime('%s', datetime('now', 'localtime')),
-                    ?,
-                    strftime('%s', datetime('now', 'localtime')))`
+                        (SELECT MAX(cua_hang_id) FROM khach_hang_xe WHERE id=?),
+                        ?,
+                        ?,
+                        strftime('%s', datetime('now', 'localtime')),
+                        ?,
+                        strftime('%s', datetime('now', 'localtime')))`
         let params = [
+            khach_hang_xe_id,
             khach_hang_xe_id,
             callout.ket_qua_goi_ra_id,
             callout.note,
@@ -838,12 +844,14 @@ class Handler {
             return result
         }, 0)
         let sql = `INSERT INTO bao_duong (khach_hang_xe_id,
+                        cua_hang_id,
                         kieu_bao_duong_id,
                         maintance_date,
                         total_price,
                         update_user,
                         create_datetime )
                     VALUES (?,
+                        (SELECT MAX(cua_hang_id) FROM khach_hang_xe WHERE id=?),
                         ?,
                         strftime('%s', datetime('now', 'localtime')),
                         ?,
@@ -851,6 +859,7 @@ class Handler {
                         strftime('%s', datetime('now', 'localtime'))
                     )`
         let params = [
+            khach_hang_xe_id,
             khach_hang_xe_id,
             maintance.kieu_bao_duong_id,
             total_price,
@@ -904,6 +913,88 @@ class Handler {
             })
         })
         .catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
+
+    reportCallout(req, res, next) {
+        let type = req.query.type // sum|detail bao cao tong hop hoac chi tiet
+        let date_sta = req.query.date_sta
+        let date_end = req.query.date_end
+        let userInfo = req.userInfo
+        let sql
+        let params
+        
+        switch (type) {
+            case 'sum':
+                sql = `  SELECT   a.name as call_out_result, COALESCE (b.count_, 0) AS count_
+                            FROM       dm_ket_qua_goi_ra a
+                                LEFT OUTER JOIN
+                                    (  SELECT   ket_qua_goi_ra_id, COUNT (1) AS count_
+                                            FROM   goi_ra
+                                        WHERE   (? IS NULL OR cua_hang_id=?)
+                                                AND call_date >= strftime ('%s', ?)
+                                                AND call_date < strftime ('%s', date (?, '+1 day'))
+                                        GROUP BY   ket_qua_goi_ra_id) b
+                                ON a.id = b.ket_qua_goi_ra_id
+                        ORDER BY   a.order_`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                break;
+            case 'detail':
+                sql = `SELECT   (strftime ('%s', date ('now')) - c.last_visit_date) / 60 / 60 / 24 / 30.0 month_not_come,
+                                (CASE
+                                    WHEN c.last_visit_date >= strftime ('%s', date ('now', '-6 month')) THEN 'T.xuyen'
+                                    ELSE 'T.dong'
+                                END)
+                                    customer_type,
+                                c.full_name,
+                                (SELECT   MAX (name)
+                                FROM   dm_dia_ly
+                                WHERE       province_code = c.province_code
+                                        AND district_code = c.district_code
+                                        AND precinct_code = c.precinct_code)
+                                    AS precinct,
+                                (SELECT   MAX (name)
+                                FROM   dm_dia_ly
+                                WHERE   province_code = c.province_code AND district_code = c.district_code AND precinct_code = '')
+                                    AS district,
+                                c.phone,
+                                d.name AS bike_name,
+                                b.bike_number,
+                                strftime ('%d/%m/%Y %H:%M', a.call_date, 'unixepoch') AS call_date,
+                                (SELECT   MAX (name)
+                                FROM   dm_ket_qua_goi_ra
+                                WHERE   id = a.ket_qua_goi_ra_id)
+                                    AS call_out_result,
+                                (SELECT   MAX (user_name)
+                                FROM   USER
+                                WHERE   id = a.update_user)
+                                    AS user_name,               
+                                (SELECT   MAX (name)
+                                FROM   dm_cua_hang
+                                WHERE   id = c.cua_hang_id)
+                                    AS shop_name                                
+                        FROM   goi_ra a,
+                                khach_hang_xe b,
+                                khach_hang c,
+                                dm_loai_xe d
+                        WHERE   (? IS NULL OR a.cua_hang_id=?)
+                                AND a.call_date >= strftime ('%s', ?)
+                                AND a.call_date < strftime ('%s', date (?, '+1 day'))
+                                AND a.khach_hang_xe_id = b.id
+                                AND b.khach_hang_id = c.id
+                                AND b.loai_xe_id = d.id
+                    ORDER BY   a.id DESC`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                break;
+            default:
+                break;
+        }
+
+        db.getRsts(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify(result))
+        }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }

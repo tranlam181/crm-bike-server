@@ -64,7 +64,7 @@ class CorsHandler {
       let Access_Control_Request_Method = req.header&&req.headers['access-control-request-method']?req.headers['access-control-request-method']:'';
       let Access_Control_Request_Credentials = req.header&&req.headers['access-control-request-credentials']?req.headers['access-control-request-credentials']:'';
 
-      console.log('origin:', origin, 'req:' , req.url);
+      // console.log('origin:', origin, 'req:' , req.url);
       //console.log('*** req.url',req.url);
 
       if (validateOrigin(origin)){ //

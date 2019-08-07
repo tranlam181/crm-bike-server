@@ -12,10 +12,10 @@ const db = new SQLiteDAO(dbFile);
 
 class Handler {
     getProvinces(req, res, next) {
-        db.getRsts("SELECT province_code, name \
-            FROM dm_dia_ly \
-            WHERE district_code = '' AND precinct_code = '' and province_code='QTR'\
-            ORDER BY name"
+        db.getRsts(`SELECT province_code, name
+            FROM dm_dia_ly
+            WHERE district_code = '' AND precinct_code = ''
+            ORDER BY name`
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row

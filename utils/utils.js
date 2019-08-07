@@ -17,7 +17,8 @@ var removeVietnameseFromString = (str) => {
     str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
     str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
     str = str.replace(/Đ/g, "D");
-    str = str.toLowerCase();
+    str = str.replace(/[^\w\s]/gi, '');
+    str = str.toUpperCase();
     str = str
       //.replace(/[&]/g, "-and-")
       //.replace(/[^a-zA-Z0-9._-]/g, "-")
