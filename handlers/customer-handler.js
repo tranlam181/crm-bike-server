@@ -11,18 +11,38 @@ const dbFile = './db/database/crm-bike.db';
 const db = new SQLiteDAO(dbFile);
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../utils/utils')
 
+var _updateBaoDuongSum = (bao_duong_id) => {    
+    let sql = `SELECT   SUM (CASE WHEN a.loai_bao_duong_id = 276 THEN price ELSE 0 END) AS price_wage,
+                SUM (CASE WHEN a.loai_bao_duong_id <> 276 THEN price ELSE 0 END) AS price_equip,
+                group_concat ( (CASE WHEN a.loai_bao_duong_id <> 276 THEN b.name ELSE NULL END)) AS maintance_detail
+            FROM   bao_duong_chi_phi a, dm_loai_bao_duong b
+            WHERE   a.bao_duong_id = ? AND a.loai_bao_duong_id = b.id
+            GROUP BY   a.bao_duong_id`
+    
+    db.getRst(sql, [bao_duong_id]).then(data => {
+        sql = `UPDATE   bao_duong
+                SET   price_wage = ?, price_equip = ?, maintance_detail = ?
+                WHERE   id = ?`
+        let params = [data.price_wage, data.price_equip, data.maintance_detail, bao_duong_id]
+
+        return db.runSql(sql, params)
+    })
+}
+
 var _importBaoDuong = (maintance, userInfo) => {
     let total_price = maintance.details.reduce((result, e, idx) => {
         result += Number(e.price)
         return result
     }, 0)
     let sql = `INSERT INTO bao_duong (khach_hang_xe_id,
+                cua_hang_id,
                 kieu_bao_duong_id,
                 maintance_date,
                 total_price,
                 update_user,
                 create_datetime )
             VALUES (?,
+                ?,
                 ?,
                 strftime('%s', ?),
                 ?,
@@ -31,13 +51,27 @@ var _importBaoDuong = (maintance, userInfo) => {
             )`
     let params = [
         maintance.khach_hang_xe_id,
+        maintance.shop_id,
         maintance.kieu_bao_duong_id,
         maintance.maintance_date,
         total_price,
         userInfo.id
     ]
 
-    db.runSql(sql, params).then(bao_duong_res => {            
+    db.runSql(sql, params).then(bao_duong_res => {
+        sql = `UPDATE khach_hang 
+                SET bao_duong_id = ?, last_maintance_date = strftime('%s', ?)
+                WHERE id=?`
+        params = [bao_duong_res.lastID, maintance.maintance_date, maintance.khach_hang_id]
+        db.runSql(sql, params)
+
+        // cap nhat id lan cuoi bao duong vao khach_hang_xe -> muc dich de bao cao cho nhanh
+        sql = ` UPDATE khach_hang_xe
+            SET bao_duong_id = ?
+            WHERE id=?`
+        params = [bao_duong_res.lastID, maintance.khach_hang_xe_id]
+        db.runSql(sql, params)
+        
         let placeholder = maintance.details.map((bao_duong, index) => '(?,?,?)').join(',')
         sql = 'INSERT INTO bao_duong_chi_phi (bao_duong_id, loai_bao_duong_id, price) VALUES ' + placeholder
 
@@ -46,7 +80,9 @@ var _importBaoDuong = (maintance, userInfo) => {
             return result
         }, [])
 
-        return db.runSql(sql, params)
+        return db.runSql(sql, params).then(data => {
+            _updateBaoDuongSum(bao_duong_res.lastID)
+        })
     })
 }
 
@@ -57,10 +93,10 @@ class Handler {
         customer.full_name = capitalizeFirstLetter(customer.full_name.trim())
         customer.phone = customer.phone.trim()
         customer.province_code = customer.province_code ? customer.province_code : 'QTR'
-        if (customer.sex) {
+        if (customer.sex && !Number(customer.sex)) {
             customer.sex = customer.sex.toUpperCase() == 'NAM' || customer.sex.toUpperCase() == '1' ? 1 : 0
         }
-
+        
         // 1. check xem customer da ton tai chua, check theo [full_name, phone]
         let sql = `SELECT MAX(id) as khach_hang_id, COUNT(1) AS count
                     FROM khach_hang
@@ -83,8 +119,7 @@ class Handler {
                             last_visit_date,
                             cua_hang_id,
                             update_user,
-                            create_datetime,
-                            last_maintance_date
+                            create_datetime
                         )
                         VALUES
                         (
@@ -99,8 +134,7 @@ class Handler {
                             strftime('%s',?),
                             ?,
                             ?,
-                            strftime('%s', datetime('now', 'localtime')),
-                            strftime('%s',?)
+                            strftime('%s', datetime('now', 'localtime'))
                         )`
                 let params = [customer.full_name,
                     customer.province_code,
@@ -112,8 +146,7 @@ class Handler {
                     customer.full_name_no_sign,
                     customer.last_visit_date ? customer.last_visit_date : customer.buy_date,
                     customer.shop_id,
-                    req.userInfo.id,
-                    customer.kieu_bao_duong_id ? customer.last_visit_date : null
+                    req.userInfo.id
                 ]
                 
                 let result = await db.runSql(sql, params).then(result => result).catch(err => err)
@@ -156,6 +189,7 @@ class Handler {
                     // ton tai loai hinh bao duong thi thuc hien insert cac bang ghi lien quan
                     if (customer.kieu_bao_duong_id) {
                         let maintance = {
+                            khach_hang_id: customerInfo.khach_hang_id,
                             khach_hang_xe_id: result.lastID,
                             kieu_bao_duong_id: customer.kieu_bao_duong_id,
                             shop_id: customer.shop_id,
@@ -531,7 +565,7 @@ class Handler {
         feedback.book_date = feedback.book_date.replace('T',' ').replace('Z','')
 
         let sql = `UPDATE khach_hang_xe
-                    SET bike_number=IFNULL(bike_number,?)
+                    SET bike_number=?
                         , y_kien_mua_xe_id=?
                         , feedback_date=strftime('%s', datetime('now', 'localtime'))
                         , note=?
@@ -885,7 +919,13 @@ class Handler {
                     WHERE khach_hang_xe_id=? AND tracking_status = 1 AND id < ?`
             params = [req.userInfo.id, khach_hang_xe_id, result.lastID]
             db.runSql(sql, params)
-
+            // cap nhat id lan cuoi bao duong vao khach_hang_xe -> muc dich de bao cao cho nhanh
+            sql = ` UPDATE khach_hang_xe
+                SET bao_duong_id = ?
+                WHERE id=?`
+            params = [result.lastID, khach_hang_xe_id]
+            db.runSql(sql, params)
+            
             sql = `update khach_hang
                     set next_book_date = NULL,
                     bao_duong_id=?,
@@ -908,6 +948,7 @@ class Handler {
             }, [])
 
             return db.runSql(sql, params).then(result => {
+                _updateBaoDuongSum(bao_duong_id)
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả bảo dưỡng thành công', count:result.changes, id:result.lastID}))
             })
@@ -961,7 +1002,7 @@ class Handler {
                                 c.phone,
                                 d.name AS bike_name,
                                 b.bike_number,
-                                strftime ('%d/%m/%Y %H:%M', a.call_date, 'unixepoch') AS call_date,
+                                strftime ('%d/%m/%Y', a.call_date, 'unixepoch') AS call_date,
                                 (SELECT   MAX (name)
                                 FROM   dm_ket_qua_goi_ra
                                 WHERE   id = a.ket_qua_goi_ra_id)
@@ -984,8 +1025,137 @@ class Handler {
                                 AND a.khach_hang_xe_id = b.id
                                 AND b.khach_hang_id = c.id
                                 AND b.loai_xe_id = d.id
-                    ORDER BY   a.id DESC`
+                    ORDER BY   a.id`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                break;
+            default:
+                break;
+        }
+
+        db.getRsts(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify(result))
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
+
+    reportMaintance(req, res, next) {
+        let type = req.query.type // sum|detail bao cao tong hop hoac chi tiet
+        let date_sta = req.query.date_sta
+        let date_end = req.query.date_end
+        let userInfo = req.userInfo
+        let sql
+        let params
+        
+        switch (type) {
+            case 'sum':
+                sql = `   SELECT   a.name AS maintance_name, COALESCE (b.count_, 0) AS count_
+                            FROM       dm_kieu_bao_duong a
+                                LEFT OUTER JOIN
+                                    (  SELECT   kieu_bao_duong_id, COUNT (1) AS count_
+                                            FROM   bao_duong
+                                        WHERE   (? IS NULL OR cua_hang_id=?)
+                                                    AND maintance_date >= strftime ('%s', ?)
+                                                AND maintance_date < strftime ('%s', date (?, '+1 day'))
+                                        GROUP BY   kieu_bao_duong_id) b
+                                ON a.id = b.kieu_bao_duong_id
+                        ORDER BY   a.id`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                break;
+            case 'detail':
+                sql = `SELECT   (strftime ('%s', date ('now')) - c.last_visit_date) / 60 / 60 / 24 / 30.0 month_not_come,
+                                (CASE
+                                    WHEN c.last_visit_date >= strftime ('%s', date ('now', '-6 month')) THEN 'T.xuyen'
+                                    ELSE 'T.dong'
+                                END)
+                                    customer_type,
+                                c.full_name,
+                                (SELECT   MAX (name) FROM dm_dia_ly WHERE province_code = c.province_code AND district_code = c.district_code AND precinct_code = c.precinct_code) AS precinct,
+                                (SELECT   MAX (name) FROM dm_dia_ly WHERE province_code = c.province_code AND district_code = c.district_code AND precinct_code = '') AS district,
+                                c.phone,
+                                d.name AS bike_name,
+                                b.bike_number,
+                                strftime ('%d/%m/%Y', a.maintance_date, 'unixepoch') AS maintance_date,
+                                (SELECT   MAX (name) FROM dm_kieu_bao_duong WHERE id = a.kieu_bao_duong_id) AS maintance_name,            
+                                a.price_wage,            
+                                a.price_equip,            
+                                a.maintance_detail,             
+                                (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name                                
+                        FROM   bao_duong a,
+                                khach_hang_xe b,
+                                khach_hang c,
+                                dm_loai_xe d
+                        WHERE   (? IS NULL OR a.cua_hang_id=?)
+                                AND a.maintance_date >= strftime ('%s', ?)
+                                AND a.maintance_date < strftime ('%s', date (?, '+1 day'))
+                                AND a.khach_hang_xe_id = b.id
+                                AND b.khach_hang_id = c.id
+                                AND b.loai_xe_id = d.id
+                    ORDER BY   a.maintance_date`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                break;
+            default:
+                break;
+        }
+
+        db.getRsts(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify(result))
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
+
+    exportCustomer(req, res, next) {
+        let type = req.query.type // active|passive|all xuat danh sach nhu the nao
+        let userInfo = req.userInfo
+        let params
+        let sql = `SELECT   (strftime ('%s', date ('now')) - c.last_visit_date) / 60 / 60 / 24 / 30.0 month_not_come,
+                    (CASE
+                        WHEN c.last_visit_date >= strftime ('%s', date ('now', '-6 month')) THEN 'T.xuyen'
+                        ELSE 'T.dong'
+                    END)
+                        customer_type,
+                    c.full_name,
+                    (SELECT   MAX (name) FROM dm_dia_ly WHERE province_code = c.province_code AND district_code = c.district_code AND precinct_code = c.precinct_code) AS precinct,
+                    (SELECT   MAX (name) FROM dm_dia_ly WHERE province_code = c.province_code AND district_code = c.district_code AND precinct_code = '') AS district,
+                    c.phone,
+                    d.name AS bike_name,
+                    b.bike_number,
+                    strftime ('%d/%m/%Y', coalesce(a.maintance_date, c.last_visit_date), 'unixepoch') AS maintance_date,
+                    (SELECT   MAX (name) FROM dm_kieu_bao_duong WHERE id = a.kieu_bao_duong_id) AS maintance_name,            
+                    a.price_wage,            
+                    a.price_equip,            
+                    a.maintance_detail,
+                    (SELECT   MAX (user_name) FROM USER WHERE id = a.update_user) AS user_name,               
+                    (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name 
+                FROM    khach_hang c,
+                    khach_hang_xe b,            
+                    dm_loai_xe d             
+                    LEFT OUTER JOIN bao_duong a ON b.bao_duong_id = a.id`
+        
+        switch (type) {
+            case 'active':
+                sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
+                                AND c.id=b.khach_hang_id    
+                                AND b.loai_xe_id = d.id
+                         ORDER BY   c.last_visit_date`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
+                break;
+            case 'passive':
+                sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
+                                AND c.id=b.khach_hang_id    
+                                AND b.loai_xe_id = d.id
+                         ORDER BY   c.last_visit_date`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
+                break;
+            case 'all':
+                sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
+                                AND c.id=b.khach_hang_id    
+                                AND b.loai_xe_id = d.id
+                         ORDER BY   c.last_visit_date`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
             default:
                 break;

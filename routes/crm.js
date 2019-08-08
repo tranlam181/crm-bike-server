@@ -105,4 +105,12 @@ router.get('/report-callouts'
     , tokenUtil.checkToken 
     , customerHanlder.reportCallout
 );
+router.get('/report-maintances'
+    , tokenUtil.checkToken 
+    , customerHanlder.reportMaintance
+);
+router.get('/export-customers'
+    , tokenUtil.checkToken 
+    , customerHanlder.exportCustomer
+);
 module.exports = router;
