@@ -10,6 +10,7 @@ const SQLiteDAO = require('../db/sqlite3/sqlite-dao');
 const dbFile = './db/database/crm-bike.db';
 const db = new SQLiteDAO(dbFile);
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../utils/utils')
+const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN"
 
 var _updateBaoDuongSum = (bao_duong_id) => {    
     let sql = `SELECT   SUM (CASE WHEN a.loai_bao_duong_id = 276 THEN price ELSE 0 END) AS price_wage,
@@ -588,6 +589,7 @@ class Handler {
             if (!feedback.book_date) {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
+                throw new Error(STOP_PROMISE_CHAIN)
             } else {
                 sql = `INSERT INTO lich_hen (khach_hang_xe_id,
                             dich_vu_id,
@@ -664,6 +666,7 @@ class Handler {
             if (!feedback.book_date) {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
+                throw new Error(STOP_PROMISE_CHAIN)
             } else {
                 sql = `INSERT INTO lich_hen (khach_hang_xe_id,
                             dich_vu_id,
@@ -725,6 +728,7 @@ class Handler {
         if (!schedule.book_date) {
             res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
             res.end(JSON.stringify({status:'NOK', message:'Bạn phải nhập ngày hẹn'}))
+            throw new Error(STOP_PROMISE_CHAIN)
         } else {
             sql = `INSERT INTO lich_hen (khach_hang_xe_id,
                         dich_vu_id,
@@ -1040,6 +1044,84 @@ class Handler {
         })
     }
 
+    reportAfterBuy(req, res, next) {
+        let type = req.query.type // sum|detail bao cao tong hop hoac chi tiet
+        let date_sta = req.query.date_sta
+        let date_end = req.query.date_end
+        let userInfo = req.userInfo
+        let sql
+        let params
+        
+        switch (type) {
+            case 'sum':
+                sql = `  SELECT   a.name as feedback, COALESCE (b.count_, 0) AS count_
+                            FROM       dm_y_kien_mua_xe a
+                                LEFT OUTER JOIN
+                                    (  SELECT   y_kien_mua_xe_id, COUNT (1) AS count_
+                                            FROM   khach_hang_xe
+                                        WHERE   (? IS NULL OR cua_hang_id=?)
+                                                AND feedback_date >= strftime ('%s', ?)
+                                                AND feedback_date < strftime ('%s', date (?, '+1 day'))
+                                        GROUP BY   y_kien_mua_xe_id) b
+                                ON a.id = b.y_kien_mua_xe_id
+                        ORDER BY   a.id`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                break;
+            case 'detail':
+                sql = `SELECT   (strftime ('%s', date ('now')) - c.last_visit_date) / 60 / 60 / 24 / 30.0 month_not_come,
+                            (CASE
+                                WHEN c.last_visit_date >= strftime ('%s', date ('now', '-6 month')) THEN 'T.xuyen'
+                                ELSE 'T.dong'
+                            END)
+                                customer_type,
+                            c.full_name,
+                            (SELECT   MAX (name)
+                            FROM   dm_dia_ly
+                            WHERE       province_code = c.province_code
+                                    AND district_code = c.district_code
+                                    AND precinct_code = c.precinct_code)
+                                AS precinct,
+                            (SELECT   MAX (name)
+                            FROM   dm_dia_ly
+                            WHERE   province_code = c.province_code AND district_code = c.district_code AND precinct_code = '')
+                                AS district,
+                            c.phone,
+                            d.name AS bike_name,
+                            b.bike_number,
+                            strftime ('%d/%m/%Y', b.feedback_date, 'unixepoch') AS feedback_date,
+                            (SELECT   MAX (name)
+                            FROM   dm_y_kien_mua_xe
+                            WHERE   id = b.y_kien_mua_xe_id)
+                                AS feedback,
+                            b.note,
+                            (SELECT   MAX (user_name)
+                            FROM   USER
+                            WHERE   id = b.update_user)
+                                AS user_name,
+                            (SELECT   MAX (name)
+                            FROM   dm_cua_hang
+                            WHERE   id = c.cua_hang_id)
+                                AS shop_name
+                    FROM   khach_hang_xe b, khach_hang c, dm_loai_xe d
+                    WHERE   (? IS NULL OR b.cua_hang_id=?)
+                            AND b.feedback_date >= strftime ('%s', ?)
+                            AND b.feedback_date < strftime ('%s', date (?, '+1 day'))
+                            AND b.khach_hang_id = c.id AND b.loai_xe_id = d.id
+                    ORDER BY b.feedback_date`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                break;
+            default:
+                break;
+        }
+
+        db.getRsts(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify(result))
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
+
     reportMaintance(req, res, next) {
         let type = req.query.type // sum|detail bao cao tong hop hoac chi tiet
         let date_sta = req.query.date_sta
@@ -1082,7 +1164,7 @@ class Handler {
                                 a.price_equip,            
                                 a.maintance_detail,             
                                 (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name                                
-                        FROM   bao_duong a,
+                        FROM    bao_duong a,
                                 khach_hang_xe b,
                                 khach_hang c,
                                 dm_loai_xe d
@@ -1105,7 +1187,66 @@ class Handler {
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
-    }
+    }    
+
+    reportAfterMaintance(req, res, next) {
+        let type = req.query.type // sum|detail bao cao tong hop hoac chi tiet
+        let date_sta = req.query.date_sta
+        let date_end = req.query.date_end
+        let userInfo = req.userInfo
+        let sql
+        let params
+        
+        switch (type) {
+            case 'sum':
+                sql = ``
+                params = []
+                break;
+            case 'detail':
+                sql = `SELECT   (strftime ('%s', date ('now')) - c.last_visit_date) / 60 / 60 / 24 / 30.0 month_not_come,
+                                (CASE
+                                    WHEN c.last_visit_date >= strftime ('%s', date ('now', '-6 month')) THEN 'T.xuyen'
+                                    ELSE 'T.dong'
+                                END)
+                                    customer_type,
+                                c.full_name,
+                                (SELECT   MAX (name) FROM dm_dia_ly WHERE province_code = c.province_code AND district_code = c.district_code AND precinct_code = c.precinct_code) AS precinct,
+                                (SELECT   MAX (name) FROM dm_dia_ly WHERE province_code = c.province_code AND district_code = c.district_code AND precinct_code = '') AS district,
+                                c.phone,
+                                d.name AS bike_name,
+                                b.bike_number,
+                                strftime ('%d/%m/%Y', a.maintance_date, 'unixepoch') AS maintance_date,
+                                (SELECT   MAX (name) FROM dm_kieu_bao_duong WHERE id = a.kieu_bao_duong_id) AS maintance_name,            
+                                a.price_wage,            
+                                a.price_equip,            
+                                a.maintance_detail,             
+                                (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name,
+                                strftime ('%d/%m/%Y', a.feedback_date, 'unixepoch') AS feedback_date,
+                                a.feedback
+                        FROM    bao_duong a,
+                                khach_hang_xe b,
+                                khach_hang c,
+                                dm_loai_xe d
+                        WHERE   (? IS NULL OR a.cua_hang_id=?)
+                                AND a.feedback_date >= strftime ('%s', ?)
+                                AND a.feedback_date < strftime ('%s', date (?, '+1 day'))
+                                AND a.khach_hang_xe_id = b.id
+                                AND b.khach_hang_id = c.id
+                                AND b.loai_xe_id = d.id
+                    ORDER BY   a.feedback_date`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                break;
+            default:
+                break;
+        }
+
+        db.getRsts(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify(result))
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }    
 
     exportCustomer(req, res, next) {
         let type = req.query.type // active|passive|all xuat danh sach nhu the nao
@@ -1128,16 +1269,19 @@ class Handler {
                     a.price_wage,            
                     a.price_equip,            
                     a.maintance_detail,
-                    (SELECT   MAX (user_name) FROM USER WHERE id = a.update_user) AS user_name,               
-                    (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name 
+                    (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name,                    
+                    (SELECT   MAX (name) FROM dm_y_kien_mua_xe WHERE id = b.y_kien_mua_xe_id) AS buy_feedback,
+                    b.note,
+                    a.feedback AS maintance_feedback
                 FROM    khach_hang c,
-                    khach_hang_xe b,            
-                    dm_loai_xe d             
-                    LEFT OUTER JOIN bao_duong a ON b.bao_duong_id = a.id`
+                        khach_hang_xe b,            
+                        dm_loai_xe d             
+                        LEFT OUTER JOIN bao_duong a ON b.bao_duong_id = a.id`
         
         switch (type) {
             case 'active':
                 sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
+                                AND strftime ('%s', date('now', '-6 month')) < c.last_visit_date
                                 AND c.id=b.khach_hang_id    
                                 AND b.loai_xe_id = d.id
                          ORDER BY   c.last_visit_date`
@@ -1145,6 +1289,7 @@ class Handler {
                 break;
             case 'passive':
                 sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
+                                AND (c.last_visit_date IS NULL OR strftime ('%s', date('now', '-6 month')) >= c.last_visit_date)
                                 AND c.id=b.khach_hang_id    
                                 AND b.loai_xe_id = d.id
                          ORDER BY   c.last_visit_date`

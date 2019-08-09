@@ -109,6 +109,14 @@ router.get('/report-maintances'
     , tokenUtil.checkToken 
     , customerHanlder.reportMaintance
 );
+router.get('/report-after-buys'
+    , tokenUtil.checkToken 
+    , customerHanlder.reportAfterBuy
+);
+router.get('/report-after-maintances'
+    , tokenUtil.checkToken 
+    , customerHanlder.reportAfterMaintance
+);
 router.get('/export-customers'
     , tokenUtil.checkToken 
     , customerHanlder.exportCustomer
