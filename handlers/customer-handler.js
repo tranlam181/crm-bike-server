@@ -12,14 +12,14 @@ const db = new SQLiteDAO(dbFile);
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../utils/utils')
 const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN"
 
-var _updateBaoDuongSum = (bao_duong_id) => {    
+var _updateBaoDuongSum = (bao_duong_id) => {
     let sql = `SELECT   SUM (CASE WHEN a.loai_bao_duong_id = 276 THEN price ELSE 0 END) AS price_wage,
                 SUM (CASE WHEN a.loai_bao_duong_id <> 276 THEN price ELSE 0 END) AS price_equip,
                 group_concat ( (CASE WHEN a.loai_bao_duong_id <> 276 THEN b.name ELSE NULL END)) AS maintance_detail
             FROM   bao_duong_chi_phi a, dm_loai_bao_duong b
             WHERE   a.bao_duong_id = ? AND a.loai_bao_duong_id = b.id
             GROUP BY   a.bao_duong_id`
-    
+
     db.getRst(sql, [bao_duong_id]).then(data => {
         sql = `UPDATE   bao_duong
                 SET   price_wage = ?, price_equip = ?, maintance_detail = ?
@@ -60,7 +60,7 @@ var _importBaoDuong = (maintance, userInfo) => {
     ]
 
     db.runSql(sql, params).then(bao_duong_res => {
-        sql = `UPDATE khach_hang 
+        sql = `UPDATE khach_hang
                 SET bao_duong_id = ?, last_maintance_date = strftime('%s', ?)
                 WHERE id=?`
         params = [bao_duong_res.lastID, maintance.maintance_date, maintance.khach_hang_id]
@@ -72,7 +72,7 @@ var _importBaoDuong = (maintance, userInfo) => {
             WHERE id=?`
         params = [bao_duong_res.lastID, maintance.khach_hang_xe_id]
         db.runSql(sql, params)
-        
+
         let placeholder = maintance.details.map((bao_duong, index) => '(?,?,?)').join(',')
         sql = 'INSERT INTO bao_duong_chi_phi (bao_duong_id, loai_bao_duong_id, price) VALUES ' + placeholder
 
@@ -97,7 +97,7 @@ class Handler {
         if (customer.sex && !Number(customer.sex)) {
             customer.sex = customer.sex.toUpperCase() == 'NAM' || customer.sex.toUpperCase() == '1' ? 1 : 0
         }
-        
+
         // 1. check xem customer da ton tai chua, check theo [full_name, phone]
         let sql = `SELECT MAX(id) as khach_hang_id, COUNT(1) AS count
                     FROM khach_hang
@@ -149,7 +149,7 @@ class Handler {
                     customer.shop_id,
                     req.userInfo.id
                 ]
-                
+
                 let result = await db.runSql(sql, params).then(result => result).catch(err => err)
                 return result.hasOwnProperty('lastID') ? {khach_hang_id: result.lastID} : Promise.reject(result)
             }
@@ -198,7 +198,7 @@ class Handler {
                             details: [
                                 {loai_bao_duong:{id: 266}, price:customer.price_equip},
                                 {loai_bao_duong:{id: 276}, price:customer.price}
-                            ]                            
+                            ]
                         }
                         _importBaoDuong(maintance, req.userInfo)
                     }
@@ -306,7 +306,7 @@ class Handler {
                     FROM khach_hang a
                     WHERE strftime ('%s', date('now', '-6 month')) < a.last_visit_date
                         AND (? IS NULL OR cua_hang_id=?)
-                    ORDER BY 
+                    ORDER BY
                         (CASE WHEN a.ket_qua_goi_ra_id IN (9, 10) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
                               WHEN IFNULL(a.ket_qua_goi_ra_id, 0) NOT IN (9, 10) AND a.last_visit_date >= strftime ('%s', date('now', '-2 month', '-14 day')) AND a.last_visit_date <= strftime ('%s', date('now', '-2 month', '+7 day')) THEN 2
                               WHEN a.last_call_out_date IS NULL AND a.last_visit_date < strftime ('%s', date('now', '-2 month', '-14 day')) THEN 3
@@ -818,8 +818,8 @@ class Handler {
                         update_user=?,
                         update_datetime=strftime('%s', datetime('now', 'localtime'))
                     WHERE id=(select khach_hang_id from khach_hang_xe where id=?)`
-            params = [result.lastID, 
-                callout.ket_qua_goi_ra_id, 
+            params = [result.lastID,
+                callout.ket_qua_goi_ra_id,
                 callout.book_date,
                 req.userInfo.id,
                 khach_hang_xe_id
@@ -835,10 +835,10 @@ class Handler {
                 res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
             } else {
                 // Finish tat ca lich hen truoc do
-                sql = `UPDATE lich_hen 
-                    SET status=1, 
+                sql = `UPDATE lich_hen
+                    SET status=1,
                         update_user=?,
-                        update_datetime=strftime('%s', datetime('now', 'localtime')) 
+                        update_datetime=strftime('%s', datetime('now', 'localtime'))
                     WHERE khach_hang_xe_id=? and book_date < strftime('%s', datetime('now', 'localtime'))`
                 params = [req.userInfo.id, khach_hang_xe_id]
                 db.runSql(sql, params)
@@ -908,7 +908,7 @@ class Handler {
             return result
         }).then(async (result) => {
             // khi da thuc hien bao duong, thi cac lich hen truoc do coi nhu finished
-            sql = `UPDATE lich_hen 
+            sql = `UPDATE lich_hen
                     SET status=1,
                         update_user=?,
                         update_datetime=strftime('%s', datetime('now', 'localtime'))
@@ -929,7 +929,7 @@ class Handler {
                 WHERE id=?`
             params = [result.lastID, khach_hang_xe_id]
             db.runSql(sql, params)
-            
+
             sql = `update khach_hang
                     set next_book_date = NULL,
                     bao_duong_id=?,
@@ -969,7 +969,7 @@ class Handler {
         let userInfo = req.userInfo
         let sql
         let params
-        
+
         switch (type) {
             case 'sum':
                 sql = `  SELECT   a.name as call_out_result, COALESCE (b.count_, 0) AS count_
@@ -1014,12 +1014,12 @@ class Handler {
                                 (SELECT   MAX (user_name)
                                 FROM   USER
                                 WHERE   id = a.update_user)
-                                    AS user_name,               
+                                    AS user_name,
                                 (SELECT   MAX (name)
                                 FROM   dm_cua_hang
                                 WHERE   id = c.cua_hang_id)
-                                    AS shop_name                                
-                        FROM   goi_ra a,
+                                    AS shop_name
+                        FROM    goi_ra a,
                                 khach_hang_xe b,
                                 khach_hang c,
                                 dm_loai_xe d
@@ -1051,7 +1051,7 @@ class Handler {
         let userInfo = req.userInfo
         let sql
         let params
-        
+
         switch (type) {
             case 'sum':
                 sql = `  SELECT   a.name as feedback, COALESCE (b.count_, 0) AS count_
@@ -1129,7 +1129,7 @@ class Handler {
         let userInfo = req.userInfo
         let sql
         let params
-        
+
         switch (type) {
             case 'sum':
                 sql = `   SELECT   a.name AS maintance_name, COALESCE (b.count_, 0) AS count_
@@ -1159,11 +1159,11 @@ class Handler {
                                 d.name AS bike_name,
                                 b.bike_number,
                                 strftime ('%d/%m/%Y', a.maintance_date, 'unixepoch') AS maintance_date,
-                                (SELECT   MAX (name) FROM dm_kieu_bao_duong WHERE id = a.kieu_bao_duong_id) AS maintance_name,            
-                                a.price_wage,            
-                                a.price_equip,            
-                                a.maintance_detail,             
-                                (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name                                
+                                (SELECT   MAX (name) FROM dm_kieu_bao_duong WHERE id = a.kieu_bao_duong_id) AS maintance_name,
+                                a.price_wage,
+                                a.price_equip,
+                                a.maintance_detail,
+                                (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name
                         FROM    bao_duong a,
                                 khach_hang_xe b,
                                 khach_hang c,
@@ -1187,7 +1187,7 @@ class Handler {
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
-    }    
+    }
 
     reportAfterMaintance(req, res, next) {
         let type = req.query.type // sum|detail bao cao tong hop hoac chi tiet
@@ -1196,7 +1196,7 @@ class Handler {
         let userInfo = req.userInfo
         let sql
         let params
-        
+
         switch (type) {
             case 'sum':
                 sql = ``
@@ -1216,10 +1216,10 @@ class Handler {
                                 d.name AS bike_name,
                                 b.bike_number,
                                 strftime ('%d/%m/%Y', a.maintance_date, 'unixepoch') AS maintance_date,
-                                (SELECT   MAX (name) FROM dm_kieu_bao_duong WHERE id = a.kieu_bao_duong_id) AS maintance_name,            
-                                a.price_wage,            
-                                a.price_equip,            
-                                a.maintance_detail,             
+                                (SELECT   MAX (name) FROM dm_kieu_bao_duong WHERE id = a.kieu_bao_duong_id) AS maintance_name,
+                                a.price_wage,
+                                a.price_equip,
+                                a.maintance_detail,
                                 (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name,
                                 strftime ('%d/%m/%Y', a.feedback_date, 'unixepoch') AS feedback_date,
                                 a.feedback
@@ -1246,7 +1246,7 @@ class Handler {
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
-    }    
+    }
 
     exportCustomer(req, res, next) {
         let type = req.query.type // active|passive|all xuat danh sach nhu the nao
@@ -1265,41 +1265,41 @@ class Handler {
                     d.name AS bike_name,
                     b.bike_number,
                     strftime ('%d/%m/%Y', coalesce(a.maintance_date, c.last_visit_date), 'unixepoch') AS maintance_date,
-                    (SELECT   MAX (name) FROM dm_kieu_bao_duong WHERE id = a.kieu_bao_duong_id) AS maintance_name,            
-                    a.price_wage,            
-                    a.price_equip,            
+                    (SELECT   MAX (name) FROM dm_kieu_bao_duong WHERE id = a.kieu_bao_duong_id) AS maintance_name,
+                    a.price_wage,
+                    a.price_equip,
                     a.maintance_detail,
-                    (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name,                    
+                    (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name,
                     (SELECT   MAX (name) FROM dm_y_kien_mua_xe WHERE id = b.y_kien_mua_xe_id) AS buy_feedback,
                     b.note,
                     a.feedback AS maintance_feedback
                 FROM    khach_hang c,
-                        khach_hang_xe b,            
-                        dm_loai_xe d             
+                        khach_hang_xe b,
+                        dm_loai_xe d
                         LEFT OUTER JOIN bao_duong a ON b.bao_duong_id = a.id`
-        
+
         switch (type) {
             case 'active':
                 sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
                                 AND strftime ('%s', date('now', '-6 month')) < c.last_visit_date
-                                AND c.id=b.khach_hang_id    
+                                AND c.id=b.khach_hang_id
                                 AND b.loai_xe_id = d.id
-                         ORDER BY   c.last_visit_date`
+                        ORDER BY   c.last_visit_date`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
             case 'passive':
                 sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
                                 AND (c.last_visit_date IS NULL OR strftime ('%s', date('now', '-6 month')) >= c.last_visit_date)
-                                AND c.id=b.khach_hang_id    
+                                AND c.id=b.khach_hang_id
                                 AND b.loai_xe_id = d.id
-                         ORDER BY   c.last_visit_date`
+                        ORDER BY   c.last_visit_date`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
             case 'all':
                 sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
-                                AND c.id=b.khach_hang_id    
+                                AND c.id=b.khach_hang_id
                                 AND b.loai_xe_id = d.id
-                         ORDER BY   c.last_visit_date`
+                        ORDER BY   c.last_visit_date`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
             default:
