@@ -810,6 +810,13 @@ class Handler {
         db.runSql(sql, params).then(result => {
             return result
         }).then(result => {
+            // cap nhat id lan cuoi goi ra vao khach_hang_xe -> muc dich de bao cao cho nhanh
+            sql = ` UPDATE khach_hang_xe
+                SET goi_ra_id = ?, call_out_date = strftime('%s', datetime('now', 'localtime'))
+                WHERE id=?`
+            params = [result.lastID, khach_hang_xe_id]
+            db.runSql(sql, params)
+
             sql = `update khach_hang
                     SET goi_ra_id=?,
                         ket_qua_goi_ra_id=?,
