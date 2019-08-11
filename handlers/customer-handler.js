@@ -221,14 +221,14 @@ class Handler {
 
         //sqlite ON DELETE CASCADE khong hoat dong khi call tu nodejs?
         //chua hieu vi sao, nen bay gio phai delete thu cong
-        let sql = `DELETE FROM lich_hen WHERE khach_hang_xe_id IN (SELECT MAX(id) FROM khach_hang_xe WHERE khach_hang_id=?)`
+        let sql = `DELETE FROM lich_hen WHERE khach_hang_xe_id IN (SELECT id FROM khach_hang_xe WHERE khach_hang_id=?)`
         let params = [khach_hang_id]
         await db.runSql(sql, params)
-        sql = `DELETE FROM goi_ra WHERE khach_hang_xe_id IN (SELECT MAX(id) FROM khach_hang_xe WHERE khach_hang_id=?)`
+        sql = `DELETE FROM goi_ra WHERE khach_hang_xe_id IN (SELECT id FROM khach_hang_xe WHERE khach_hang_id=?)`
         await db.runSql(sql, params)
-        sql = `DELETE FROM bao_duong_chi_phi WHERE bao_duong_id IN (SELECT id FROM bao_duong WHERE khach_hang_xe_id IN (SELECT MAX(id) FROM khach_hang_xe WHERE khach_hang_id=?))`
+        sql = `DELETE FROM bao_duong_chi_phi WHERE bao_duong_id IN (SELECT id FROM bao_duong WHERE khach_hang_xe_id IN (SELECT id FROM khach_hang_xe WHERE khach_hang_id=?))`
         await db.runSql(sql, params)
-        sql = `DELETE FROM bao_duong WHERE khach_hang_xe_id IN (SELECT MAX(id) FROM khach_hang_xe WHERE khach_hang_id=?)`
+        sql = `DELETE FROM bao_duong WHERE khach_hang_xe_id IN (SELECT id FROM khach_hang_xe WHERE khach_hang_id=?)`
         await db.runSql(sql, params)
         sql = `DELETE FROM khach_hang_xe WHERE khach_hang_id=?`
         await db.runSql(sql, params)
@@ -565,7 +565,35 @@ class Handler {
         feedback.is_free = (feedback.is_free ? 1 : 0)
         feedback.book_date = feedback.book_date.replace('T',' ').replace('Z','')
 
-        let sql = `UPDATE khach_hang_xe
+        // ban than viec cap nhat y kien mua xe cung la goi ra
+        // cho nen can bo sung 1 bang ghi goi ra voi ket_qua_goi_ra_id=13 :Xin y kien mua xe
+        let sql = `INSERT INTO goi_ra (khach_hang_xe_id,
+                cua_hang_id,
+                ket_qua_goi_ra_id,
+                y_kien_mua_xe_id,
+                note,
+                call_date,
+                update_user,
+                create_datetime)
+            VALUES (?,
+                (SELECT MAX(cua_hang_id) FROM khach_hang_xe WHERE id=?),
+                ?,
+                ?,
+                ?,
+                strftime('%s', datetime('now', 'localtime')),
+                ?,
+                strftime('%s', datetime('now', 'localtime')))`
+        let params = [
+            khach_hang_xe_id,
+            khach_hang_xe_id,
+            13,
+            feedback.y_kien_mua_xe_id,
+            feedback.note,
+            req.userInfo.id
+        ]
+        db.runSql(sql, params)
+
+        sql = `UPDATE khach_hang_xe
                     SET bike_number=?
                         , y_kien_mua_xe_id=?
                         , feedback_date=strftime('%s', datetime('now', 'localtime'))
@@ -573,7 +601,7 @@ class Handler {
                         , update_user=?
                         , update_datetime=strftime('%s', datetime('now', 'localtime'))
                     WHERE id=?`
-        let params = [
+        params = [
             feedback.bike_number,
             feedback.y_kien_mua_xe_id,
             feedback.note,
@@ -643,8 +671,33 @@ class Handler {
         feedback.is_free = (feedback.is_free ? 1 : 0)
         feedback.book_date = feedback.book_date.replace('T',' ').replace('Z','')
 
+        // ban than viec cap nhat y kien dich vu cung la goi ra
+        // cho nen can bo sung 1 bang ghi goi ra voi ket_qua_goi_ra_id=14 :Xin y kien dich vu
+        let sql = `INSERT INTO goi_ra (khach_hang_xe_id,
+                cua_hang_id,
+                ket_qua_goi_ra_id,
+                note,
+                call_date,
+                update_user,
+                create_datetime)
+            VALUES ((SELECT MAX(khach_hang_xe_id) FROM bao_duong where id=?),
+                (SELECT MAX(cua_hang_id) FROM bao_duong where id=?),
+                ?,
+                ?,
+                strftime('%s', datetime('now', 'localtime')),
+                ?,
+                strftime('%s', datetime('now', 'localtime')))`
+        let params = [
+            bao_duong_id,
+            bao_duong_id,
+            14,
+            feedback.feedback,
+            req.userInfo.id
+        ]
+        db.runSql(sql, params)
+
         let sql = `UPDATE bao_duong
-                    SET feedback=?
+                    SET  feedback=?
                         , feedback_date=strftime('%s', datetime('now', 'localtime'))
                         , is_complain=?
                         , tracking_status=${feedback.is_complain == 1 ? 1 : 0}
@@ -1000,32 +1053,16 @@ class Handler {
                                 END)
                                     customer_type,
                                 c.full_name,
-                                (SELECT   MAX (name)
-                                FROM   dm_dia_ly
-                                WHERE       province_code = c.province_code
-                                        AND district_code = c.district_code
-                                        AND precinct_code = c.precinct_code)
-                                    AS precinct,
-                                (SELECT   MAX (name)
-                                FROM   dm_dia_ly
-                                WHERE   province_code = c.province_code AND district_code = c.district_code AND precinct_code = '')
-                                    AS district,
+                                (SELECT   MAX (name) FROM   dm_dia_ly WHERE       province_code = c.province_code AND district_code = c.district_code AND precinct_code = c.precinct_code) AS precinct,
+                                (SELECT   MAX (name) FROM   dm_dia_ly WHERE   province_code = c.province_code AND district_code = c.district_code AND precinct_code = '') AS district,
                                 c.phone,
                                 d.name AS bike_name,
                                 b.bike_number,
                                 strftime ('%d/%m/%Y', a.call_date, 'unixepoch') AS call_date,
-                                (SELECT   MAX (name)
-                                FROM   dm_ket_qua_goi_ra
-                                WHERE   id = a.ket_qua_goi_ra_id)
-                                    AS call_out_result,
-                                (SELECT   MAX (user_name)
-                                FROM   USER
-                                WHERE   id = a.update_user)
-                                    AS user_name,
-                                (SELECT   MAX (name)
-                                FROM   dm_cua_hang
-                                WHERE   id = c.cua_hang_id)
-                                    AS shop_name
+                                (SELECT   MAX (name) FROM   dm_ket_qua_goi_ra WHERE   id = a.ket_qua_goi_ra_id) AS call_out_result,
+                                (SELECT   MAX (name) FROM   dm_y_kien_mua_xe WHERE   id = a.y_kien_mua_xe_id) AS buy_opinion,
+                                a.note,
+                                (SELECT   MAX (name) FROM   dm_cua_hang WHERE   id = c.cua_hang_id) AS shop_name
                         FROM    goi_ra a,
                                 khach_hang_xe b,
                                 khach_hang c,
