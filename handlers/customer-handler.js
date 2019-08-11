@@ -696,7 +696,7 @@ class Handler {
         ]
         db.runSql(sql, params)
 
-        let sql = `UPDATE bao_duong
+        sql = `UPDATE bao_duong
                     SET  feedback=?
                         , feedback_date=strftime('%s', datetime('now', 'localtime'))
                         , is_complain=?
@@ -704,7 +704,7 @@ class Handler {
                         , update_user = ?
                         , update_datetime = strftime('%s', datetime('now', 'localtime'))
                     WHERE id=?`
-        let params = [
+        params = [
             feedback.feedback,
             feedback.is_complain,
             req.userInfo.id,

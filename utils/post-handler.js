@@ -7,9 +7,9 @@
  * Thực hiện nhận dữ liệu post lên từ JsonData hoặc từ FormData
  * Lưu file vào đường dẫn định trước qua biến dirUpload
  * và trả kết quả cho req.json_data hoặc req.form_data
- * 
+ *
  * các đường dẫn lưu file sẽ sắp xếp theo tháng/ngày /giờ(nếu cần)
- * 
+ *
  */
 //đường dẫn lưu file khi nhận FormData ở đâu?
 const dirUpload = 'upload_files';
@@ -24,21 +24,21 @@ if (!fs.existsSync(dirUpload)) fs.mkdirSync(dirUpload);
    * body formdata => req.form_data (file save in dirUpload )
    * eg: /upload_files/yyyymm/dd/hhmmss_filesize_filename
    * return req.form_data.params/files = {key_i:value_i}/{key_i:{url:...}}
-   * 
-   * @param {*} req 
-   * @param {*} res 
-   * @param {*} next 
+   *
+   * @param {*} req
+   * @param {*} res
+   * @param {*} next
    */
 var formProcess = (req, res, next) => {
     const form = new formidable.IncomingForm();
     form.parse(req, function (err, fields, files) {
       let formData = {params:{},files:{}};
-      
+
       if (err) {
         res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(JSON.stringify({message:'Parse Formdata Error', error: err}));
       } else {
-        
+
         for (let key in fields) {
           //gan them thuoc tinh dynamic
           Object.defineProperty(formData.params, key, {
@@ -50,7 +50,7 @@ var formProcess = (req, res, next) => {
 
         let count_file = 0;
         for (let key in files) {
-          
+
           let curdatetime = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/-/g, '').replace(/:/g, '');
           let curMonth = curdatetime.slice(0,6);
           let curDate = curdatetime.slice(6,8);
@@ -61,7 +61,7 @@ var formProcess = (req, res, next) => {
           //luu file theo duong dan he thong
           let filenameStored = dirUpload + systempath.sep
                               + curMonth + systempath.sep
-                              + curDate + systempath.sep 
+                              + curDate + systempath.sep
                               //+ curTime + "_"
                               + files[key].size + "_"
                               + files[key].name;
@@ -76,7 +76,7 @@ var formProcess = (req, res, next) => {
 
           fs.createReadStream(files[key].path)
               .pipe(fs.createWriteStream(filenameStored));
-          
+
           count_file++;
 
           let contentType='image/jpeg';
@@ -96,7 +96,7 @@ var formProcess = (req, res, next) => {
 
         formData.params.count_file = count_file;
         req.form_data = formData;
-        
+
         next();
       }
     });
@@ -105,23 +105,21 @@ var formProcess = (req, res, next) => {
 
   /**
    * body json => req.json_data
-   * @param {*} req 
-   * @param {*} res 
-   * @param {*} next 
+   * @param {*} req
+   * @param {*} res
+   * @param {*} next
    */
- var jsonProcess = (req, res, next) =>{
-
+var jsonProcess = (req, res, next) =>{
     let postDataString = '';
     req.on('data', (chunk) => {
         postDataString += chunk;
     });
     req.on('end', () => {
-      try{
+      try {
         req.json_data = JSON.parse(postDataString);
         next();
-      }catch(err){
-        res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(JSON.stringify({message:"No JSON parse Data",error:err}));
+      } catch(err) {
+        res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
       }
     })
   }
