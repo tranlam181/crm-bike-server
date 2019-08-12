@@ -32,13 +32,11 @@ if (!fs.existsSync(dirUpload)) fs.mkdirSync(dirUpload);
 var formProcess = (req, res, next) => {
     const form = new formidable.IncomingForm();
     form.parse(req, function (err, fields, files) {
-      let formData = {params:{},files:{}};
+      let formData = {params:{}, files:{}};
 
       if (err) {
-        res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(JSON.stringify({message:'Parse Formdata Error', error: err}));
+        res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
       } else {
-
         for (let key in fields) {
           //gan them thuoc tinh dynamic
           Object.defineProperty(formData.params, key, {
@@ -49,8 +47,8 @@ var formProcess = (req, res, next) => {
         }
 
         let count_file = 0;
-        for (let key in files) {
 
+        for (let key in files) {
           let curdatetime = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/-/g, '').replace(/:/g, '');
           let curMonth = curdatetime.slice(0,6);
           let curDate = curdatetime.slice(6,8);
@@ -96,7 +94,6 @@ var formProcess = (req, res, next) => {
 
         formData.params.count_file = count_file;
         req.form_data = formData;
-
         next();
       }
     });
@@ -111,9 +108,11 @@ var formProcess = (req, res, next) => {
    */
 var jsonProcess = (req, res, next) =>{
     let postDataString = '';
+
     req.on('data', (chunk) => {
         postDataString += chunk;
     });
+    
     req.on('end', () => {
       try {
         req.json_data = JSON.parse(postDataString);
