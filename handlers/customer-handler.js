@@ -245,7 +245,7 @@ class Handler {
 
     getCustomers(req, res, next) {
         let filter = req.query.filter // birthday|coming loc danh sach gi
-        let s = req.query.s // chuoi tim kiem neu co
+        let s = req.query.s ? removeVietnameseFromString(req.query.s) : null // chuoi tim kiem neu co
         let sql = ''
         let params = []
         let userInfo = req.userInfo
@@ -271,7 +271,6 @@ class Handler {
                 sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
                     FROM khach_hang a
                     WHERE	  strftime ('%m', birthday, 'unixepoch') = strftime ('%m', 'now')
-                        AND CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL) >= CAST (strftime ('%d', 'now') AS DECIMAL)
                         AND (? IS NULL OR cua_hang_id=?)
                     ORDER BY CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL), full_name_no_sign`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
@@ -308,10 +307,11 @@ class Handler {
                         AND (? IS NULL OR cua_hang_id=?)
                     ORDER BY
                         (CASE WHEN a.ket_qua_goi_ra_id IN (9, 10) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
-                              WHEN IFNULL(a.ket_qua_goi_ra_id, 0) NOT IN (9, 10) AND a.last_visit_date >= strftime ('%s', date('now', '-2 month', '-14 day')) AND a.last_visit_date <= strftime ('%s', date('now', '-2 month', '+7 day')) THEN 2
-                              WHEN a.last_call_out_date IS NULL AND a.last_visit_date < strftime ('%s', date('now', '-2 month', '-14 day')) THEN 3
+                              --WHEN IFNULL(a.ket_qua_goi_ra_id, 0) NOT IN (9, 10) AND a.last_visit_date >= strftime ('%s', date('now', '-2 month', '-14 day')) AND a.last_visit_date <= strftime ('%s', date('now', '-2 month', '+7 day')) THEN 2
+                              --WHEN a.last_call_out_date IS NULL AND a.last_visit_date < strftime ('%s', date('now', '-2 month', '-14 day')) THEN 3
+                              WHEN a.last_call_out_date IS NULL THEN 4
                               ELSE 99
-                        END), a.last_call_out_date
+                        END), a.last_visit_date
                     LIMIT 30`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
@@ -567,22 +567,25 @@ class Handler {
 
         // ban than viec cap nhat y kien mua xe cung la goi ra
         // cho nen can bo sung 1 bang ghi goi ra voi ket_qua_goi_ra_id=13 :Xin y kien mua xe
-        let sql = `INSERT INTO goi_ra (khach_hang_xe_id,
-                cua_hang_id,
-                ket_qua_goi_ra_id,
-                y_kien_mua_xe_id,
-                note,
-                call_date,
-                update_user,
-                create_datetime)
-            VALUES (?,
-                (SELECT MAX(cua_hang_id) FROM khach_hang_xe WHERE id=?),
-                ?,
-                ?,
-                ?,
-                strftime('%s', datetime('now', 'localtime')),
-                ?,
-                strftime('%s', datetime('now', 'localtime')))`
+        let sql = `INSERT INTO goi_ra (
+                        khach_hang_xe_id,
+                        cua_hang_id,
+                        ket_qua_goi_ra_id,
+                        y_kien_mua_xe_id,
+                        note,
+                        call_date,
+                        update_user,
+                        create_datetime)
+                VALUES (
+                    ?,
+                    (SELECT MAX(cua_hang_id) FROM khach_hang_xe WHERE id=?),
+                    ?,
+                    ?,
+                    ?,
+                    strftime('%s', datetime('now', 'localtime')),
+                    ?,
+                    strftime('%s', datetime('now', 'localtime'))
+                )`
         let params = [
             khach_hang_xe_id,
             khach_hang_xe_id,
@@ -591,29 +594,43 @@ class Handler {
             feedback.note,
             req.userInfo.id
         ]
-        db.runSql(sql, params)
 
-        sql = `UPDATE khach_hang_xe
-                    SET bike_number=?
-                        , y_kien_mua_xe_id=?
-                        , feedback_date=strftime('%s', datetime('now', 'localtime'))
-                        , note=?
-                        , update_user=?
-                        , update_datetime=strftime('%s', datetime('now', 'localtime'))
-                    WHERE id=?`
-        params = [
-            feedback.bike_number,
-            feedback.y_kien_mua_xe_id,
-            feedback.note,
-            req.userInfo.id,
-            khach_hang_xe_id,
-        ]
+        db.runSql(sql, params).then(goi_ra => {
+            sql = `update khach_hang
+                    SET goi_ra_id=?,
+                        ket_qua_goi_ra_id=?,
+                        last_call_out_date=strftime('%s', datetime('now', 'localtime')),
+                        update_user=?,
+                        update_datetime=strftime('%s', datetime('now', 'localtime'))
+                    WHERE id=(select khach_hang_id from khach_hang_xe where id=?)`
+            params = [goi_ra.lastID,
+                13,
+                req.userInfo.id,
+                khach_hang_xe_id
+            ]
+            db.runSql(sql, params)
 
-        db.runSql(sql, params).then(result => {
-            // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            // res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công', count:result.changes, id:result.lastID}))
-            return "OK"
-        }).then(msg => {
+            sql = `UPDATE khach_hang_xe
+                SET bike_number=?
+                    , y_kien_mua_xe_id=?
+                    , feedback_date=strftime('%s', datetime('now', 'localtime'))
+                    , note=?
+                    , update_user=?
+                    , update_datetime=strftime('%s', datetime('now', 'localtime'))
+                    , goi_ra_id = ?
+                    , call_out_date = strftime('%s', datetime('now', 'localtime'))
+                WHERE id=?`
+            params = [
+                feedback.bike_number,
+                feedback.y_kien_mua_xe_id,
+                feedback.note,
+                req.userInfo.id,
+                goi_ra.lastID,
+                khach_hang_xe_id,
+            ]
+
+            return db.runSql(sql, params)
+        }).then(result => {
             if (!feedback.book_date) {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
@@ -626,11 +643,11 @@ class Handler {
                             update_user,
                             create_datetime)
                         VALUES (?,
-                        ?,
-                        strftime('%s', ?),
-                        ?,
-                        ?,
-                        strftime('%s', datetime('now', 'localtime')))`
+                            ?,
+                            strftime('%s', ?),
+                            ?,
+                            ?,
+                            strftime('%s', datetime('now', 'localtime')))`
                 params = [
                     khach_hang_xe_id,
                     feedback.dich_vu_id,
@@ -641,7 +658,7 @@ class Handler {
 
                 return db.runSql(sql, params)
             }
-        }).then(obj => {
+        }).then(lich_hen => {
             sql = `UPDATE khach_hang
                     SET last_call_out_date = strftime('%s', datetime('now', 'localtime'))
                     , next_book_date = strftime('%s', ?)
@@ -860,14 +877,13 @@ class Handler {
             req.userInfo.id
         ]
 
-        db.runSql(sql, params).then(result => {
-            return result
-        }).then(result => {
+        db.runSql(sql, params).then(goi_ra_result => {            
             // cap nhat id lan cuoi goi ra vao khach_hang_xe -> muc dich de bao cao cho nhanh
             sql = ` UPDATE khach_hang_xe
-                SET goi_ra_id = ?, call_out_date = strftime('%s', datetime('now', 'localtime'))
-                WHERE id=?`
-            params = [result.lastID, khach_hang_xe_id]
+                    SET goi_ra_id = ?, 
+                        call_out_date = strftime('%s', datetime('now', 'localtime'))
+                    WHERE id = ?`
+            params = [goi_ra_result.lastID, khach_hang_xe_id]
             db.runSql(sql, params)
 
             sql = `update khach_hang
@@ -878,17 +894,14 @@ class Handler {
                         update_user=?,
                         update_datetime=strftime('%s', datetime('now', 'localtime'))
                     WHERE id=(select khach_hang_id from khach_hang_xe where id=?)`
-            params = [result.lastID,
+            params = [goi_ra_result.lastID,
                 callout.ket_qua_goi_ra_id,
                 callout.book_date,
                 req.userInfo.id,
                 khach_hang_xe_id
             ]
 
-            return db.runSql(sql, params)//.then(result => {
-                // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                // res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công', count:result.changes, id:result.lastID}))
-            // })
+            return db.runSql(sql, params)
         }).then(data => {
             if (!callout.book_date) {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -896,9 +909,9 @@ class Handler {
             } else {
                 // Finish tat ca lich hen truoc do
                 sql = `UPDATE lich_hen
-                    SET status=1,
-                        update_user=?,
-                        update_datetime=strftime('%s', datetime('now', 'localtime'))
+                        SET status=1,
+                            update_user=?,
+                            update_datetime=strftime('%s', datetime('now', 'localtime'))
                     WHERE khach_hang_xe_id=? and book_date < strftime('%s', datetime('now', 'localtime'))`
                 params = [req.userInfo.id, khach_hang_xe_id]
                 db.runSql(sql, params)
@@ -964,9 +977,7 @@ class Handler {
             req.userInfo.id
         ]
 
-        db.runSql(sql, params).then(result => {
-            return result
-        }).then(async (result) => {
+        db.runSql(sql, params).then(async (result) => {           
             // khi da thuc hien bao duong, thi cac lich hen truoc do coi nhu finished
             sql = `UPDATE lich_hen
                     SET status=1,
