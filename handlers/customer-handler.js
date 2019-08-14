@@ -292,7 +292,7 @@ class Handler {
                     WHERE (last_visit_date IS NULL OR strftime ('%s', date('now', '-6 month')) >= last_visit_date)
                         AND (? IS NULL OR cua_hang_id=?)
                     ORDER BY (CASE
-                        WHEN a.ket_qua_goi_ra_id IN (9, 10) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
+                        WHEN a.ket_qua_goi_ra_id IN (9, 3) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
                         WHEN a.ket_qua_goi_ra_id IS NULL THEN 2
                         ELSE 99
                     END), a.last_call_out_date
@@ -306,8 +306,8 @@ class Handler {
                     WHERE strftime ('%s', date('now', '-6 month')) < a.last_visit_date
                         AND (? IS NULL OR cua_hang_id=?)
                     ORDER BY
-                        (CASE WHEN a.ket_qua_goi_ra_id IN (9, 10) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
-                              --WHEN IFNULL(a.ket_qua_goi_ra_id, 0) NOT IN (9, 10) AND a.last_visit_date >= strftime ('%s', date('now', '-2 month', '-14 day')) AND a.last_visit_date <= strftime ('%s', date('now', '-2 month', '+7 day')) THEN 2
+                        (CASE WHEN a.ket_qua_goi_ra_id IN (9, 3) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
+                              --WHEN IFNULL(a.ket_qua_goi_ra_id, 0) NOT IN (9, 3) AND a.last_visit_date >= strftime ('%s', date('now', '-2 month', '-14 day')) AND a.last_visit_date <= strftime ('%s', date('now', '-2 month', '+7 day')) THEN 2
                               --WHEN a.last_call_out_date IS NULL AND a.last_visit_date < strftime ('%s', date('now', '-2 month', '-14 day')) THEN 3
                               WHEN a.last_call_out_date IS NULL THEN 4
                               ELSE 99
@@ -1317,6 +1317,7 @@ class Handler {
                     (SELECT   MAX (name) FROM dm_dia_ly WHERE province_code = c.province_code AND district_code = c.district_code AND precinct_code = c.precinct_code) AS precinct,
                     (SELECT   MAX (name) FROM dm_dia_ly WHERE province_code = c.province_code AND district_code = c.district_code AND precinct_code = '') AS district,
                     c.phone,
+                    (CASE WHEN c.sex = 1 THEN 'Nam' ELSE 'Nữ' END) AS sex,
                     d.name AS bike_name,
                     b.bike_number,
                     strftime ('%d/%m/%Y', coalesce(a.maintance_date, c.last_visit_date), 'unixepoch') AS maintance_date,
