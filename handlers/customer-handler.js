@@ -570,6 +570,7 @@ class Handler {
         let sql = `INSERT INTO goi_ra (
                         khach_hang_xe_id,
                         cua_hang_id,
+                        muc_dich_goi_ra_id,
                         ket_qua_goi_ra_id,
                         y_kien_mua_xe_id,
                         note,
@@ -582,6 +583,7 @@ class Handler {
                     ?,
                     ?,
                     ?,
+                    ?,
                     strftime('%s', datetime('now', 'localtime')),
                     ?,
                     strftime('%s', datetime('now', 'localtime'))
@@ -589,7 +591,8 @@ class Handler {
         let params = [
             khach_hang_xe_id,
             khach_hang_xe_id,
-            13,
+            feedback.muc_dich_goi_ra_id,
+            13, // xin y kien mua xe
             feedback.y_kien_mua_xe_id,
             feedback.note,
             req.userInfo.id
@@ -692,6 +695,7 @@ class Handler {
         // cho nen can bo sung 1 bang ghi goi ra voi ket_qua_goi_ra_id=14 :Xin y kien dich vu
         let sql = `INSERT INTO goi_ra (khach_hang_xe_id,
                 cua_hang_id,
+                muc_dich_goi_ra_id,
                 ket_qua_goi_ra_id,
                 note,
                 call_date,
@@ -701,13 +705,15 @@ class Handler {
                 (SELECT MAX(cua_hang_id) FROM bao_duong where id=?),
                 ?,
                 ?,
+                ?,
                 strftime('%s', datetime('now', 'localtime')),
                 ?,
                 strftime('%s', datetime('now', 'localtime')))`
         let params = [
             bao_duong_id,
             bao_duong_id,
-            14,
+            4, // muc dich: Hoi tham sau bao duong
+            14, // Xin y kien bao duong
             feedback.feedback,
             req.userInfo.id
         ]
@@ -857,6 +863,7 @@ class Handler {
 
         let sql = `INSERT INTO goi_ra (khach_hang_xe_id,
                         cua_hang_id,
+                        muc_dich_goi_ra_id,
                         ket_qua_goi_ra_id,
                         note,
                         call_date,
@@ -866,12 +873,14 @@ class Handler {
                         (SELECT MAX(cua_hang_id) FROM khach_hang_xe WHERE id=?),
                         ?,
                         ?,
+                        ?,
                         strftime('%s', datetime('now', 'localtime')),
                         ?,
                         strftime('%s', datetime('now', 'localtime')))`
         let params = [
             khach_hang_xe_id,
             khach_hang_xe_id,
+            callout.muc_dich_goi_ra_id,
             callout.ket_qua_goi_ra_id,
             callout.note,
             req.userInfo.id
@@ -1070,6 +1079,7 @@ class Handler {
                                 d.name AS bike_name,
                                 b.bike_number,
                                 strftime ('%d/%m/%Y', a.call_date, 'unixepoch') AS call_date,
+                                (SELECT   MAX (name) FROM   dm_muc_dich_goi_ra WHERE   id = a.muc_dich_goi_ra_id) AS call_out_purpose,
                                 (SELECT   MAX (name) FROM   dm_ket_qua_goi_ra WHERE   id = a.ket_qua_goi_ra_id) AS call_out_result,
                                 (SELECT   MAX (name) FROM   dm_y_kien_mua_xe WHERE   id = a.y_kien_mua_xe_id) AS buy_opinion,
                                 a.note,

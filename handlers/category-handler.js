@@ -188,6 +188,16 @@ class Handler {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
+
+    getCalloutPurposes(req, res, next) {
+        db.getRsts("select id, name from dm_muc_dich_goi_ra order by order_", []
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
 }
 
 module.exports = {

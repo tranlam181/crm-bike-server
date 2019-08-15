@@ -39,6 +39,9 @@ router.get('/category/kieu-bao-duongs'
 router.get('/category/service-types'
     , categoryHandler.getServiceTypes
 );
+router.get('/category/callout-purposes'
+    , categoryHandler.getCalloutPurposes
+);
 router.post('/customers'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
