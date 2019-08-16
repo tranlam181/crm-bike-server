@@ -269,18 +269,20 @@ class Handler {
         switch (filter) {
             case 'birthday':
                 sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
-                    FROM khach_hang a
+                        ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
+                    FROM khach_hang a LEFT OUTER JOIN goi_ra gr ON a.goi_ra_id = gr.id
                     WHERE	  strftime ('%m', birthday, 'unixepoch') = strftime ('%m', 'now')
-                        AND (? IS NULL OR cua_hang_id=?)
+                        AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL), full_name_no_sign`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
 
             case 'coming':
                 sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
-                    FROM khach_hang a
+                        ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
+                    FROM khach_hang a LEFT OUTER JOIN goi_ra gr ON a.goi_ra_id = gr.id
                     WHERE next_book_date <= strftime('%s', date('now', '+10 day'))
-                        AND (? IS NULL OR cua_hang_id=?)
+                        AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY a.next_book_date, full_name_no_sign
                     LIMIT 30`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
@@ -288,9 +290,10 @@ class Handler {
 
             case 'passive':
                 sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
-                    FROM khach_hang a
+                        ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
+                    FROM khach_hang a LEFT OUTER JOIN goi_ra gr ON a.goi_ra_id = gr.id
                     WHERE (last_visit_date IS NULL OR strftime ('%s', date('now', '-6 month')) >= last_visit_date)
-                        AND (? IS NULL OR cua_hang_id=?)
+                        AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY (CASE
                         WHEN a.ket_qua_goi_ra_id IN (9, 3) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
                         WHEN a.ket_qua_goi_ra_id IS NULL THEN 2
@@ -302,9 +305,10 @@ class Handler {
 
             case 'active':
                 sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
-                    FROM khach_hang a
+                        ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
+                    FROM khach_hang a LEFT OUTER JOIN goi_ra gr ON a.goi_ra_id = gr.id
                     WHERE strftime ('%s', date('now', '-6 month')) < a.last_visit_date
-                        AND (? IS NULL OR cua_hang_id=?)
+                        AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY
                         (CASE WHEN a.ket_qua_goi_ra_id IN (9, 3) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
                               --WHEN IFNULL(a.ket_qua_goi_ra_id, 0) NOT IN (9, 3) AND a.last_visit_date >= strftime ('%s', date('now', '-2 month', '-14 day')) AND a.last_visit_date <= strftime ('%s', date('now', '-2 month', '+7 day')) THEN 2
@@ -357,9 +361,10 @@ class Handler {
 
             default:
                 sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
-                    FROM khach_hang a
+                        ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
+                    FROM khach_hang a LEFT OUTER JOIN goi_ra gr ON a.goi_ra_id = gr.id
                     WHERE (ifnull(?,'') = '' OR phone LIKE '%' || ? || '%' OR full_name_no_sign LIKE '%' || UPPER(?) || '%' )
-                        AND (? IS NULL OR cua_hang_id=?)
+                        AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY full_name_no_sign
                     LIMIT 30`
                 params = [s, s, s, userInfo.cua_hang_id, userInfo.cua_hang_id]
@@ -886,10 +891,10 @@ class Handler {
             req.userInfo.id
         ]
 
-        db.runSql(sql, params).then(goi_ra_result => {            
+        db.runSql(sql, params).then(goi_ra_result => {
             // cap nhat id lan cuoi goi ra vao khach_hang_xe -> muc dich de bao cao cho nhanh
             sql = ` UPDATE khach_hang_xe
-                    SET goi_ra_id = ?, 
+                    SET goi_ra_id = ?,
                         call_out_date = strftime('%s', datetime('now', 'localtime'))
                     WHERE id = ?`
             params = [goi_ra_result.lastID, khach_hang_xe_id]
@@ -986,7 +991,7 @@ class Handler {
             req.userInfo.id
         ]
 
-        db.runSql(sql, params).then(async (result) => {           
+        db.runSql(sql, params).then(async (result) => {
             // khi da thuc hien bao duong, thi cac lich hen truoc do coi nhu finished
             sql = `UPDATE lich_hen
                     SET status=1,
