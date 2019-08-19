@@ -21,7 +21,7 @@ var checkToken = async (req, res, next) => {
             req.userInfo = decoded
             next()
         } catch(err) {
-            return res.status(401).end(JSON.stringify({status: 'NOK', msg: 'Token invalid'}))
+            return res.status(401).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         }
     } else {
         return res.status(403).end(JSON.stringify({status: 'NOK', msg: 'No token founded'}))
