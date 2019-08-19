@@ -28,6 +28,22 @@ var checkToken = async (req, res, next) => {
     }
 }
 
+var checkRefreshToken = async (req, res, next) => {
+    const refresh_token = req.headers['refresh_token']
+
+    if (refresh_token) {
+        try {
+            const decoded = await verifyToken(refresh_token, jwtConfig.refreshSecret)
+            req.userInfo = decoded
+            next()
+        } catch(err) {
+            return res.status(403).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        }
+    } else {
+        return res.status(403).end(JSON.stringify({status: 'NOK', msg: 'No refresh_token founded'}))
+    }
+}
+
 module.exports = {
     checkToken
 }
