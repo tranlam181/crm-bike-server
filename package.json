@@ -1,8 +1,8 @@
 {
-  "name": "sever-invoice",
+  "name": "sever-crm",
   "version": "1.0.0",
-  "author": "Cuong.dq",
-  "homepage": "https://cuongdq-ionic.herokuapp.com",
+  "author": "lam.letran",
+  "homepage": "https://chonsoc3.mobifone.vn",
   "private": true,
   "scripts": {
     "start": "ionic-app-scripts serve",

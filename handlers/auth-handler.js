@@ -47,7 +47,8 @@ class Handler {
                         user_name,
                         password,
                         cua_hang_id,
-                        (SELECT MAX(name) FROM dm_cua_hang WHERE id=user.cua_hang_id) AS shop_name
+                        (SELECT MAX(name) FROM dm_cua_hang WHERE id=user.cua_hang_id) AS shop_name,
+                        link_3c
                     FROM user WHERE user_name = ?`
         let params = [user.user_name]
 
