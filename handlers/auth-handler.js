@@ -86,6 +86,36 @@ class Handler {
     logout(req, res, next) {
         res.status(200).end(JSON.stringify({status:'OK', msg:`User ${req.user.user_name} logout thành công`}))
     }
+
+    async getLink3c(req, res, next) {
+        let sql = `SELECT id, link_3c FROM user WHERE id = ?`
+        let params = [req.userInfo.id]
+
+        let userDB = await db.getRst(sql, params)
+
+        if (!userDB || !userDB.id) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'NOK', msg:`User ${req.userInfo.id} không tồn tại`}))
+            return
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify({status:'OK', link_3c: userDB.link_3c}))
+    }
+
+    async saveLink3c(req, res, next) {
+        let data = req.json_data
+
+        let sql = `UPDATE user SET link_3c=? WHERE id = ?`
+        let params = [data.link_3c, req.userInfo.id]
+
+        db.runSql(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Cập nhật link 3c thành công'}))
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
 }
 
 module.exports = {
