@@ -3,9 +3,6 @@
 const timeZoneOffset = +7;
 const vnUtils = require('../utils/vietnamese-handler');
 const arrObj = require('../utils/array-object');
-
-
-
 const SQLiteDAO = require('../db/sqlite3/sqlite-dao');
 const dbFile = './db/database/invoice-vinhhung.db';
 const db = new SQLiteDAO(dbFile);
@@ -109,8 +106,8 @@ var selectCustomers = (req) => {
         });
 }
 
-var selectInvoicesJson = (req) => { 
-    
+var selectInvoicesJson = (req) => {
+
     return (new Promise( async (resolve, reject) => {
         var saler = await db.getRst("select description as full_name, signature from parameters where id = '"+33+"'");
         var manager = await db.getRst("select description as full_name, signature from parameters where id = '"+32+"'");
@@ -229,7 +226,7 @@ var json2SqliteSQLUpdateCustomerId = (tablename, json, idFields) => {
 }
 
 var createInvoicesCycle = (bill_cycle_in,bill_date_in,invoice_no_in, cust_id)=>{
-   
+
     let bill_cycle = bill_cycle_in?bill_cycle_in.slice(0,6): new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '').slice(0,6);
     let bill_date = bill_date_in?bill_date_in.slice(0,8): new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '').slice(0,8);
     let invoice_no = invoice_no_in?invoice_no_in:1; //so hoa don bat dau tu 1 (so hoa don truoc do)
@@ -273,7 +270,7 @@ var createInvoicesCycle = (bill_cycle_in,bill_date_in,invoice_no_in, cust_id)=>{
 
                     let product_count = 1; //so luong
                     let price = prices.find(x => x.id === el.price_id);
-    
+
                     let bill_detail = {
                         cust_id         : el.cust_id,          //khach mua
                         bill_cycle      : bill_cycle,    //ky mua
@@ -283,9 +280,9 @@ var createInvoicesCycle = (bill_cycle_in,bill_date_in,invoice_no_in, cust_id)=>{
                         total_not_vat   : price.not_vat * product_count,
                         total_vat       : price.vat * product_count
                     };
-    
+
                     let sqlBill = json2SqliteSQLUpdateCustomerId('bills', bill_detail, ['cust_id','bill_cycle', 'price_id']) ;
-    
+
                     var billDetailPromise = new Promise((resolveBill,rejectBill)=>{
                         db.insert(sqlBill)
                             .then(data => {
@@ -301,13 +298,13 @@ var createInvoicesCycle = (bill_cycle_in,bill_date_in,invoice_no_in, cust_id)=>{
                                 })
                             })
                     })
-                    
-    
+
+
                         let bill_sum={};
                         bill_sum.sum_not_vat    = price.not_vat * product_count;
                         bill_sum.sum_vat        = price.vat * product_count;
                         bill_sum.sum_charge     = price.charge * product_count
-    
+
                         let invoice = {
                             cust_id         : el.cust_id
                             , bill_cycle    : bill_cycle
@@ -317,7 +314,7 @@ var createInvoicesCycle = (bill_cycle_in,bill_date_in,invoice_no_in, cust_id)=>{
                             , sum_vat       : bill_sum.sum_vat
                             , sum_charge    : bill_sum.sum_charge
                         };
-    
+
                         let sqlInvoice = json2SqliteSQLUpdateCustomerId('invoices', invoice,  ['cust_id','bill_cycle']);
 
                         //console.log('sqlInvoice', sqlInvoice);
@@ -333,11 +330,11 @@ var createInvoicesCycle = (bill_cycle_in,bill_date_in,invoice_no_in, cust_id)=>{
                                         resolveInvoice(invoice_no);
                                     })
                                     .catch(err=>{
-                                        rejectInvoice(err);            
+                                        rejectInvoice(err);
                                     })
                                 })
                         })
-                        
+
                         billDetailPromise
                             .then(billResult=>{
                                 invoicePromise.then(invoiceResult=>{
@@ -348,7 +345,7 @@ var createInvoicesCycle = (bill_cycle_in,bill_date_in,invoice_no_in, cust_id)=>{
                                             {
                                                 status: true
                                                 , message:'Tao xong hoa don ky'
-                                                , count: count 
+                                                , count: count
                                                 , bill_cycle: bill_cycle
                                                 , bill_date: bill_date
                                                 , invoice_no: invoice_no
@@ -414,10 +411,10 @@ class ResourceHandler {
 
     /**
      * cap nhat du lieu khach hang vao csdl
-     * 
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
+     *
+     * @param {*} req
+     * @param {*} res
+     * @param {*} next
      */
     editCustomer(req, res, next) {
         //thuc hien luu tru vao csdl
@@ -468,13 +465,13 @@ class ResourceHandler {
     /**
      * tạo hóa đơn theo req.json_data = {bill_cycle,bill_date,invoice_no,cust_id}
      * ket qủa cho biêt tạo được bao nhiêu hoá đơn, chu kỳ, ngày hóa đơn và số hóa đơn cho phiên sau
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
+     * @param {*} req
+     * @param {*} res
+     * @param {*} next
      */
     createInvoices(req, res, next) {
-        if (req.json_data 
-            && req.json_data.bill_cycle 
+        if (req.json_data
+            && req.json_data.bill_cycle
             && req.json_data.bill_date
             && req.json_data.invoice_no
             ) {
@@ -503,9 +500,9 @@ class ResourceHandler {
 
     /**
      * Lay cac ky cuoc da duoc khoa so
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
+     * @param {*} req
+     * @param {*} res
+     * @param {*} next
      */
     getBillCycles(req, res, next) {
         db.getRsts("select bill_cycle\
@@ -539,9 +536,9 @@ class ResourceHandler {
 
     /**
      * Lay tham so he thong ve mang tham so
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
+     * @param {*} req
+     * @param {*} res
+     * @param {*} next
      */
     getParameters(req, res, next) {
         db.getRsts('select * \
@@ -589,10 +586,10 @@ class ResourceHandler {
 
     /**
      * Lay json khach hang
-     * mat nhien la lay 
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
+     * mat nhien la lay
+     * @param {*} req
+     * @param {*} res
+     * @param {*} next
      */
     getCustomers(req, res, next) {
 
@@ -622,12 +619,12 @@ class ResourceHandler {
 
     /**
      * Lay hoa don excel theo ky,khach le?backgroud=yes/no
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
+     * @param {*} req
+     * @param {*} res
+     * @param {*} next
      */
     getInvoices(req, res, next) {
-         
+
         req.bill_cycle = req.pathName.substring('/qld/db/json-invoices/'.length).slice(0, 6);
 
         selectInvoicesJson(req)
@@ -648,7 +645,7 @@ class ResourceHandler {
 
     }
 
-   
+
 
     getPdfInvoices(req, res, next) {
 
@@ -657,7 +654,7 @@ class ResourceHandler {
 
         selectInvoicesMatrix(req)
             .then(invoicesMatrix => {
-                
+
                 //console.log(invoicesMatrix);
 
                 let outputFilename = './pdf/invoice_'+req.bill_cycle+'.pdf';
@@ -685,19 +682,19 @@ class ResourceHandler {
 
     /**
      * tra ds khack hang bang excel
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
+     * @param {*} req
+     * @param {*} res
+     * @param {*} next
      */
     getExcelCustomers(req, res, next) {
 
     }
 
     /**
-     * tra ds hoa don bang excel 
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
+     * tra ds hoa don bang excel
+     * @param {*} req
+     * @param {*} res
+     * @param {*} next
      */
     getExcelInvoices(req, res, next) {
 
@@ -719,7 +716,7 @@ class ResourceHandler {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(req.json_data));
     }
-    
+
 
 }
 

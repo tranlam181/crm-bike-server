@@ -4,13 +4,9 @@
  * phan quyen user
  * bien dau vao la req.user
  * xu ly tu token truoc do, neu req.user.data.role===99 la quyen root (chi developer 903500888 thoi)
- * 
+ *
  */
-const arrObj = require('../utils/array-object');
-
-const SQLiteDAO = require('../db/sqlite3/sqlite-dao');
-const dbFile = './db/database/admin-roles.db';
-const db = new SQLiteDAO(dbFile);
+const db = require('../db/sqlite3/crm-dao')
 
 class Handler {
 
@@ -18,9 +14,9 @@ class Handler {
      * Thiết lập chức năng dựa trên đường dẫn của get/post
      * Đường dẫn cuối sẽ là duy nhất của từng chức năng
      * ví dụ: /db/edit-customer thì edit-customer là chức năng
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
+     * @param {*} req
+     * @param {*} res
+     * @param {*} next
      */
     setFunctionFromPath(req,res,next){
         //lay duong dan phia sau
@@ -54,18 +50,18 @@ class Handler {
     }
 
     /**
-     * req.functionCode = "active" //chuc nang toi thieu la active 
-     * 
+     * req.functionCode = "active" //chuc nang toi thieu la active
+     *
      * req.functionCode = "edit-customer" //yeu cau kiem tra quyen
      * //neu khong co functionCode thi xem nhu khong can kiem tra quyen
-     * 
-     * @param {*} req 
-     * @param {*} res 
-     * @param {*} next 
+     *
+     * @param {*} req
+     * @param {*} res
+     * @param {*} next
      */
     async checkFunctionRole(req,res,next){
 
-        
+
         if (req.functionCode){ //can kiem tra quyen cua user co khong
             if (req.user&&req.user.data){
                 //console.log('userData:',req.user.data);
@@ -83,7 +79,7 @@ class Handler {
                         let functionId = row2?row2.id:undefined; //tra ve id
                         //console.log('rolesFunction', functionId, roles);
                         let index =  roles&&functionId&&roles.functions?roles.functions.findIndex(x=>x===functionId):-1;
-    
+
                         if (index>=0){
                             next()
                         }else{

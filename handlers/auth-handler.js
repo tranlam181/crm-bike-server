@@ -1,7 +1,6 @@
 "use strict"
-const SQLiteDAO = require('../db/sqlite3/sqlite-dao');
-const dbFile = './db/database/crm-bike.db';
-const db = new SQLiteDAO(dbFile);
+
+const db = require('../db/sqlite3/crm-dao')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const jwtConfig = require('../jwt/jwt-config')

@@ -6,9 +6,7 @@
  * xu ly tu token truoc do, neu req.user.data.role===99 la quyen root (chi developer 903500888 thoi)
  *
  */
-const SQLiteDAO = require('../db/sqlite3/sqlite-dao');
-const dbFile = './db/database/crm-bike.db';
-const db = new SQLiteDAO(dbFile);
+const db = require('../db/sqlite3/crm-dao')
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../utils/utils')
 const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN"
 
