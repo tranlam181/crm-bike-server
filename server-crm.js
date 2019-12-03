@@ -7,18 +7,19 @@ function main(isHttp, isHttps) {
   //web tinh
   // app.use(express.static(__dirname + '/www'));
   app.use('/crm',express.static(__dirname + '/platforms/browser/www'));
+  app.use('/crm/hieu-nga', express.static(__dirname + '/hieu-nga'));
 
   //CHONG TAN CONG DDDOS
-  //ngan chan truy cap ddos tra ket qua cho user neu truy cap tan suat lon 
+  //ngan chan truy cap ddos tra ket qua cho user neu truy cap tan suat lon
   app.use(require('./ddos/ddos-config').express('ip', 'path'));
-  
+
   //CORS handle
   app.use(require('./handlers/cors-handler').cors);
 
   //su dung auth user
   app.use('/crm/auth',  require('./routes/auth'));
-
   app.use('/crm/api', require('./routes/crm'));
+  app.use('/crm/hieu-nga/api', require('./routes/crm-hieu-nga-route'));
 
   //ham tra loi cac dia chi khong co
   //The 404 Route (ALWAYS Keep this as the last route)
@@ -50,8 +51,8 @@ function main(isHttp, isHttps) {
     // For https
     const privateKey = fs.readFileSync('cert/api-private-key.pem', 'utf8');
     const certificate = fs.readFileSync('cert/my-certificate.pem', 'utf8');
-    const credentials = { 
-        key: privateKey, 
+    const credentials = {
+        key: privateKey,
         cert: certificate,
         honorCipherOrder: true,
         ciphers: [
@@ -79,7 +80,7 @@ function main(isHttp, isHttps) {
        ].join(':')
     };
     const portHttps = process.env.PORT || isHttps;
-    
+
     const httpsServer = require('https').createServer(credentials, app);
 
     httpsServer.listen(portHttps, () => {
@@ -94,10 +95,5 @@ function main(isHttp, isHttps) {
 
 }
 
-//=false or port number >1000
-const isHttp = 9237;
-const isHttps = false; //crm
-// const isHttp = false;
-// const isHttps = 9237; //crm
-
-main(isHttp, isHttps);
+const isHttps = false
+main(!isHttps && 9237, isHttps && 9237);
