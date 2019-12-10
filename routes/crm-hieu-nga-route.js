@@ -6,8 +6,8 @@ const postHandler = require('../utils/post-handler');
 const tokenUtil = require('../utils/token-util');
 
 //test phan quyen kiem tra quyen, lay quyen
-const categoryHandler = require("../handlers/category-handler").Handler;
-const customerHanlder = require("../handlers/customer-handler").Handler;
+const categoryHandler = require("../handlers/crm-hieu-nga/category-handler").Handler;
+const customerHanlder = require("../handlers/crm-hieu-nga/customer-handler").Handler;
 
 router.get('/category/provinces'
     , categoryHandler.getProvinces
@@ -20,6 +20,9 @@ router.get('/category/precincts/:province_code/:district_code'
 );
 router.get('/category/bike-types'
     , categoryHandler.getBikeTypes
+);
+router.get('/category/bike-colors'
+    , categoryHandler.getBikeColors
 );
 router.get('/category/shops'
     , categoryHandler.getShops
@@ -52,7 +55,7 @@ router.delete('/customers/:khach_hang_id'
     , customerHanlder.delCustomer
 );
 router.get('/customers'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.getCustomers
 );
 router.get('/customers/:khach_hang_id'
@@ -60,68 +63,68 @@ router.get('/customers/:khach_hang_id'
     , customerHanlder.getCustomer
 );
 router.get('/customers/:khach_hang_id/bikes'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.getCustomerBikes
 );
 router.get('/customers/:khach_hang_id/maintances'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.getCustomerMaintances
 );
 router.get('/customers-bikes/:khach_hang_xe_id'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.getCustomerBikeInfo
 );
 router.get('/customers/maintances/:bao_duong_id'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.getCustomerMaintanceInfo
 );
 router.get('/maintances/:bao_duong_id/details'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.getMaintanceDetails
 );
 router.put('/maintances/:bao_duong_id'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.updateFeedbackAfterMaintance
 );
 router.post('/maintances/:bao_duong_id/schedules'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.addSchedule
 );
 router.put('/customers/bikes/:khach_hang_xe_id'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.updateFeedbackAfterBuy
 );
 router.post('/customers-bikes/:khach_hang_xe_id/callouts'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.addCallout
 );
 router.post('/customers-bikes/:khach_hang_xe_id/maintances'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.addMaintance
 );
 router.get('/report-callouts'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.reportCallout
 );
 router.get('/report-maintances'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.reportMaintance
 );
 router.get('/report-after-buys'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.reportAfterBuy
 );
 router.get('/report-after-maintances'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.reportAfterMaintance
 );
 router.get('/export-customers'
-    , tokenUtil.checkToken 
+    , tokenUtil.checkToken
     , customerHanlder.exportCustomer
 );
 module.exports = router;

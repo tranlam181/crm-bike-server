@@ -6,8 +6,8 @@
  * xu ly tu token truoc do, neu req.user.data.role===99 la quyen root (chi developer 903500888 thoi)
  *
  */
-const db = require('../db/sqlite3/crm-hieu-nga-dao')
-const {capitalizeFirstLetter, removeVietnameseFromString} = require('../utils/utils')
+const db = require('../../db/sqlite3/crm-hieu-nga-dao')
+const {capitalizeFirstLetter, removeVietnameseFromString} = require('../../utils/utils')
 const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN"
 
 var _updateBaoDuongSum = (bao_duong_id) => {
@@ -88,10 +88,9 @@ var _importBaoDuong = (maintance, userInfo) => {
 class Handler {
     addCustomer(req, res, next) {
         let customer = req.json_data
-        customer.full_name_no_sign = removeVietnameseFromString(customer.full_name)
-        customer.full_name = capitalizeFirstLetter(customer.full_name.trim())
+        customer.full_name_no_sign = capitalizeFirstLetter(removeVietnameseFromString(customer.full_name.trim()))
         customer.phone = customer.phone.trim()
-        customer.province_code = customer.province_code ? customer.province_code : 'QTR'
+        customer.province_code = customer.province_code ? customer.province_code : 'DNA'
         if (customer.sex && !Number(customer.sex)) {
             customer.sex = customer.sex.toUpperCase() == 'NAM' || customer.sex.toUpperCase() == '1' ? 1 : 0
         }
@@ -99,53 +98,53 @@ class Handler {
         // 1. check xem customer da ton tai chua, check theo [full_name, phone]
         let sql = `SELECT MAX(id) as khach_hang_id, COUNT(1) AS count
                     FROM khach_hang
-                    WHERE full_name_no_sign=? AND phone=?`
+                    WHERE phone=?`
 
-        db.getRst(sql, [customer.full_name_no_sign, customer.phone]).then(async (row) => {
+        db.getRst(sql, [customer.phone]).then(async (row) => {
             if (row.count > 0) { // ton tai roi thi khong can them moi Khach hang
                 return {khach_hang_id: row.khach_hang_id}
             } else { // chua ton tai thi them moi Khach hang, dong thoi them moi du lieu xe
                 // Them moi Khach hang
                 let sql = `INSERT INTO khach_hang
-                        (   full_name,
+                        (
+                            full_name,
+                            phone,
+                            phone_2,
+                            birthday,
+                            sex,
+                            job,
                             province_code,
                             district_code,
                             precinct_code,
-                            phone,
-                            birthday,
-                            sex,
-                            full_name_no_sign,
-                            last_visit_date,
-                            cua_hang_id,
-                            update_user,
-                            create_datetime
+                            address,
+                            full_name_no_sign
                         )
                         VALUES
                         (
                             ?,
                             ?,
                             ?,
-                            ?,
-                            ?,
                             strftime('%s',?),
                             ?,
                             ?,
-                            strftime('%s',?),
                             ?,
                             ?,
-                            strftime('%s', datetime('now', 'localtime'))
+                            ?,
+                            ?,
+                            ?
                         )`
-                let params = [customer.full_name,
+                let params = [
+                    customer.full_name,
+                    customer.phone,
+                    customer.phone_2,
+                    customer.birthday,
+                    customer.sex,
+                    customer.job,
                     customer.province_code,
                     customer.district_code,
                     customer.precinct_code,
-                    customer.phone,
-                    customer.birthday,
-                    customer.sex,
-                    customer.full_name_no_sign,
-                    customer.last_visit_date ? customer.last_visit_date : customer.buy_date,
-                    customer.shop_id,
-                    req.userInfo.id
+                    customer.address,
+                    customer.full_name_no_sign
                 ]
 
                 let result = await db.runSql(sql, params).then(result => result).catch(err => err)
@@ -154,39 +153,45 @@ class Handler {
         })
         .then(customerInfo => {
             // them du lieu xe
-            let sql = `REPLACE INTO khach_hang_xe
-                (   khach_hang_id,
+            let sql = `INSERT INTO xe
+                (
                     cua_hang_id,
+                    khach_hang_id,
                     loai_xe_id,
-                    buy_date,
+                    mau_xe_id,
+                    frame_number,
+                    engine_number,
                     bike_number,
-                    update_user,
-                    update_datetime,
-                    create_datetime
+                    buy_date,
+                    warranty_number
                 )
                 VALUES
                 (
                     ?,
                     ?,
                     ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
                     strftime('%s',?),
-                    ?,
-                    ?,
-                    strftime('%s', datetime('now', 'localtime')),
-                    strftime('%s', datetime('now', 'localtime'))
+                    ?
                 )`
             let params = [
+                customer.cua_hang_id,
                 customerInfo.khach_hang_id,
-                customer.shop_id,
-                customer.bike_type_id,
-                customer.buy_date,
+                customer.loai_xe_id,
+                customer.mau_xe_id,
+                customer.frame_number,
+                customer.engine_number,
                 customer.bike_number,
-                req.userInfo.id
+                customer.buy_date,
+                customer.warranty_number
             ]
-            if (customer.bike_type_id) {
+            if (customer.loai_xe_id) {
                 return db.runSql(sql, params).then(result => {
                     // ton tai loai hinh bao duong thi thuc hien insert cac bang ghi lien quan
-                    if (customer.kieu_bao_duong_id) {
+                    if (customer.loai_bao_duong_id) {
                         let maintance = {
                             khach_hang_id: customerInfo.khach_hang_id,
                             khach_hang_xe_id: result.lastID,
@@ -202,11 +207,11 @@ class Handler {
                     }
 
                     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                    res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', count:result.changes, khach_hang_id:customerInfo.khach_hang_id, STT: customer.STT}))
+                    res.end(JSON.stringify({status:'OK', msg:'Thêm xe thành công', count:result.changes, khach_hang_id:customerInfo.khach_hang_id}))
                 })
             } else {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Thêm Khách hàng thành công', khach_hang_id:customerInfo.khach_hang_id, STT: customer.STT}))
+                res.end(JSON.stringify({status:'OK', msg:'Thêm xe thành công', khach_hang_id:customerInfo.khach_hang_id}))
             }
         })
         .catch(err => {
