@@ -103,7 +103,7 @@ class Handler {
     }
 
     getBuyOpinions(req, res, next) {
-        db.getRsts("select id,name from  dm_y_kien_mua_xe where status is null order by name"
+        db.getRsts("select id,name from  dm_ket_qua_goi_ra where muc_dich_goi_ra_id=3 order by id"
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row

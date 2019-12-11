@@ -255,21 +255,66 @@ class Handler {
 
         if (!s || s=='undefined') s = ''
 
-        sql = `SELECT a.id,
-                full_name,
-                (SELECT MAX (name)
-                    FROM dm_dia_ly
-                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,
-                a.phone,
-                strftime ('%d/%m/%Y', a.birthday, 'unixepoch') AS birthday,
-                CASE a.sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,
-                strftime ('%d/%m/%Y', a.next_book_date, 'unixepoch') AS next_book_date,
-                strftime ('%d/%m/%Y', a.last_call_out_date, 'unixepoch') AS last_call_out_date,
-                strftime ('%d/%m/%Y', a.last_maintance_date, 'unixepoch') AS last_maintance_date,
-                strftime ('%d/%m/%Y', a.last_visit_date, 'unixepoch') AS last_visit_date,
-                (SELECT MAX(name) FROM dm_cua_hang where id=a.cua_hang_id) AS shop_name`
+        sql = `SELECT
+                a.id as xe_id,
+                a.khach_hang_id,
+                (SELECT MAX(name) FROM dm_cua_hang where id=a.cua_hang_id) AS shop_name,
+                a.loai_xe_id,
+                (SELECT MAX(name) FROM dm_loai_xe where id=a.loai_xe_id) AS bike_name,
+                a.mau_xe_id,
+                a.frame_number,
+                a.engine_number,
+                a.bike_number,
+                strftime ('%d/%m/%Y', a.buy_date, 'unixepoch') AS buy_date,
+                a.warranty_number,
+                strftime ('%d/%m/%Y', a.call_date, 'unixepoch') AS call_date,
+                b.full_name,
+                b.phone,
+                b.phone_2,
+                strftime ('%d/%m/%Y', b.birthday, 'unixepoch') AS birthday,
+                b.sex,
+                b.job,
+                b.province_code,
+                b.address`
 
         switch (filter) {
+            // AND a.buy_date <= strftime ('%s', date('now', '-10 day'))
+            //             AND a.buy_date >= strftime ('%s', date('now', '-30 day'))
+            case 'after10BuyDate':
+                sql += ` FROM xe a , khach_hang b
+                    WHERE
+                        a.y_kien_mua_xe_id IS NULL
+
+                        AND (? IS NULL OR a.cua_hang_id=?)
+                        AND a.khach_hang_id=b.id
+                    ORDER BY a.buy_date
+                    LIMIT 30`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
+                break;
+
+            case 'after3MaintanceDate':
+                sql += ` , c.id as bao_duong_id
+                        , strftime ('%d/%m/%Y', c.maintance_date, 'unixepoch') AS maintance_date
+                        , (select max(name) from dm_kieu_bao_duong where id=c.kieu_bao_duong_id) as maintance_name
+                        , c.feedback
+                        , c.is_complain
+                        , (SELECT MAX(name) FROM dm_loai_xe WHERE id=b.loai_xe_id) AS bike_name
+                    FROM bao_duong c, khach_hang_xe b, khach_hang a
+                    WHERE
+                        (
+                            (  c.maintance_date <= strftime ('%s', date('now', '-3 day'))
+                                AND c.maintance_date >= strftime ('%s', date('now', '-13 day'))
+                                AND c.feedback IS NULL )
+                            OR c.tracking_status = 1
+                        )
+                        AND c.khach_hang_xe_id = b.id
+                        AND b.khach_hang_id = a.id
+                        AND (? IS NULL OR a.cua_hang_id=?)
+                    ORDER BY IFNULL(c.is_complain, 99), c.maintance_date
+                    LIMIT 30`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
+                break;
+
             case 'birthday':
                 sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
                         ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
@@ -323,45 +368,6 @@ class Handler {
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
 
-            case 'after10BuyDate':
-                sql += ` ,strftime ('%d/%m/%Y', b.buy_date, 'unixepoch') AS buy_date
-                    , c.name as bike_name
-                    , b.id as khach_hang_xe_id
-                    FROM khach_hang a, khach_hang_xe b, dm_loai_xe c
-                    WHERE	  a.id = b.khach_hang_id
-                        AND b.y_kien_mua_xe_id IS NULL
-                        AND b.buy_date <= strftime ('%s', date('now', '-10 day'))
-                        AND b.buy_date >= strftime ('%s', date('now', '-30 day'))
-                        AND b.loai_xe_id = c.id
-                        AND (? IS NULL OR a.cua_hang_id=?)
-                    ORDER BY b.buy_date
-                    LIMIT 30`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
-
-            case 'after3MaintanceDate':
-                sql += ` , c.id as bao_duong_id
-                        , strftime ('%d/%m/%Y', c.maintance_date, 'unixepoch') AS maintance_date
-                        , (select max(name) from dm_kieu_bao_duong where id=c.kieu_bao_duong_id) as maintance_name
-                        , c.feedback
-                        , c.is_complain
-                        , (SELECT MAX(name) FROM dm_loai_xe WHERE id=b.loai_xe_id) AS bike_name
-                    FROM bao_duong c, khach_hang_xe b, khach_hang a
-                    WHERE
-                        (
-                            (  c.maintance_date <= strftime ('%s', date('now', '-3 day'))
-                                AND c.maintance_date >= strftime ('%s', date('now', '-13 day'))
-                                AND c.feedback IS NULL )
-                            OR c.tracking_status = 1
-                        )
-                        AND c.khach_hang_xe_id = b.id
-                        AND b.khach_hang_id = a.id
-                        AND (? IS NULL OR a.cua_hang_id=?)
-                    ORDER BY IFNULL(c.is_complain, 99), c.maintance_date
-                    LIMIT 30`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
-
             default:
                 sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
                         ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
@@ -389,22 +395,46 @@ class Handler {
     getCustomer(req, res, next) {
         let khach_hang_id = req.params.khach_hang_id
 
-        db.getRst("SELECT id,\
-                    full_name,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = '') AS district,\
-                    (SELECT MAX (name)\
-                    FROM dm_dia_ly\
-                    WHERE province_code = a.province_code AND district_code = a.district_code AND precinct_code = a.precinct_code) AS precinct,\
-                    phone,\
-                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,\
-                    CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex\
-            FROM khach_hang a\
-            WHERE id=?", [khach_hang_id]
+        db.getRst(`SELECT id AS khach_hang_id,
+                    full_name,
+                    phone,
+                    phone_2,
+                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,
+                    (SELECT MAX (name)
+                        FROM dm_dia_ly
+                        WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,
+                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,
+                    CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,
+                    job,
+                    address
+            FROM khach_hang a
+            WHERE id=?`, [khach_hang_id]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getBike(req, res, next) {
+        let xe_id = req.params.xe_id
+
+        db.getRst(`select
+                    id as xe_id,
+                    khach_hang_id,
+                    (SELECT MAX(name) FROM dm_cua_hang where id=xe.cua_hang_id) AS shop_name,
+                    (SELECT MAX(name) FROM dm_loai_xe where id=xe.loai_xe_id) AS bike_name,
+                    mau_xe_id,
+                    frame_number,
+                    engine_number,
+                    bike_number,
+                    strftime ('%d/%m/%Y', buy_date, 'unixepoch') AS buy_date,
+                    warranty_number,
+                    y_kien_mua_xe_id,
+                    strftime ('%d/%m/%Y', call_date, 'unixepoch') AS call_date
+            from xe
+            where id=?`, [xe_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row));

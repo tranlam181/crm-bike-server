@@ -127,4 +127,8 @@ router.get('/export-customers'
     , tokenUtil.checkToken
     , customerHanlder.exportCustomer
 );
+router.get('/bikes/:xe_id'
+    , tokenUtil.checkToken
+    , customerHanlder.getBike
+);
 module.exports = router;
