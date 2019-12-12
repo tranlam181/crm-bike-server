@@ -92,7 +92,7 @@ router.post('/maintances/:bao_duong_id/schedules'
     , postHandler.jsonProcess
     , customerHanlder.addSchedule
 );
-router.put('/customers/bikes/:khach_hang_xe_id'
+router.put('/callouts/after-buy'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.updateFeedbackAfterBuy
