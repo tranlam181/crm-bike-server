@@ -136,12 +136,46 @@ class Handler {
         let filter = req.query.filter
         if (!filter || filter=='undefined') filter = ''
 
-        db.getRsts("select id,name \
+        db.getRsts(`select id,name \
                     from  dm_loai_bao_duong \
-                    where status is null \
-                    AND ((ifnull(?,'') = '' OR name_no_sign LIKE '%' || UPPER(?) || '%' )) \
-                    ORDER BY name_no_sign\
-                    limit 20", [filter, filter]
+                    ORDER BY id`, []
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getEquips(req, res, next) {
+        db.getRsts(`select id,name
+                    from  dm_dich_vu_chi_tiet
+                    WHERE status IS NULL
+                    ORDER BY name_no_sign`, []
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getStaffs(req, res, next) {
+        let cua_hang_id = req.params.cua_hang_id
+        db.getRsts(`select id,name \
+                    from  dm_nhan_vien \
+                    where cua_hang_id=?
+                    ORDER BY id`, [cua_hang_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row

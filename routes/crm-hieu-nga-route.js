@@ -27,6 +27,9 @@ router.get('/category/bike-colors'
 router.get('/category/shops'
     , categoryHandler.getShops
 );
+router.get('/category/equips'
+    , categoryHandler.getEquips
+);
 router.get('/category/buy-opinions'
     , categoryHandler.getBuyOpinions
 );
@@ -35,6 +38,9 @@ router.get('/category/call-results'
 );
 router.get('/category/maintance-types'
     , categoryHandler.getMaintanceTypes
+);
+router.get('/category/shops/:cua_hang_id/staffs'
+    , categoryHandler.getStaffs
 );
 router.get('/category/kieu-bao-duongs'
     , categoryHandler.getKieuBaoDuongs
@@ -102,10 +108,10 @@ router.post('/customers-bikes/:khach_hang_xe_id/callouts'
     , postHandler.jsonProcess
     , customerHanlder.addCallout
 );
-router.post('/customers-bikes/:khach_hang_xe_id/maintances'
+router.post('/services'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
-    , customerHanlder.addMaintance
+    , customerHanlder.addService
 );
 router.get('/report-callouts'
     , tokenUtil.checkToken

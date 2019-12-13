@@ -423,6 +423,7 @@ class Handler {
 
         db.getRst(`select
                     id as xe_id,
+                    cua_hang_id,
                     khach_hang_id,
                     (SELECT MAX(name) FROM dm_cua_hang where id=xe.cua_hang_id) AS shop_name,
                     (SELECT MAX(name) FROM dm_loai_xe where id=xe.loai_xe_id) AS bike_name,
@@ -923,86 +924,81 @@ class Handler {
         })
     }
 
-    addMaintance(req, res, next) {
-        let khach_hang_xe_id = req.params.khach_hang_xe_id
-        let maintance = req.json_data
-        let total_price = maintance.details.reduce((result, e, idx) => {
+    addService(req, res, next) {
+        let service = req.json_data
+        let total_price = service.equips.reduce((result, e, idx) => {
             result += Number(e.price)
             return result
         }, 0)
-        let sql = `INSERT INTO bao_duong (khach_hang_xe_id,
+
+        service.total_price = total_price + Number(service.price_wage)
+
+        let sql = `INSERT INTO dich_vu (
+                        khach_hang_id,
                         cua_hang_id,
-                        kieu_bao_duong_id,
-                        maintance_date,
-                        total_price,
-                        update_user,
-                        create_datetime )
-                    VALUES (?,
-                        (SELECT MAX(cua_hang_id) FROM khach_hang_xe WHERE id=?),
+                        loai_bao_duong_id,
+                        xe_id,
+                        service_date,
+                        in_date,
+                        out_date,
+                        reception_staff,
+                        repaire_staff_1,
+                        repaire_staff_2,
+                        check_staff,
+                        customer_require,
+                        is_keep_old_equip,
+                        offer_1,
+                        offer_2,
+                        offer_3,
+                        equips,
+                        price_wage,
+                        total_price
+                    )
+                    VALUES (
+                        ?,
+                        ?,
+                        ?,
                         ?,
                         strftime('%s', datetime('now', 'localtime')),
+                        strftime('%s', ?),
+                        strftime('%s', ?),
                         ?,
                         ?,
-                        strftime('%s', datetime('now', 'localtime'))
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?
                     )`
         let params = [
-            khach_hang_xe_id,
-            khach_hang_xe_id,
-            maintance.kieu_bao_duong_id,
-            total_price,
-            req.userInfo.id
+            service.khach_hang_id,
+            service.cua_hang_id,
+            service.loai_bao_duong_id,
+            service.xe_id,
+            service.in_date,
+            service.out_date,
+            service.reception_staff,
+            service.repaire_staff_1,
+            service.repaire_staff_2,
+            service.check_staff,
+            service.customer_require,
+            service.is_keep_old_equip,
+            service.offer_1,
+            service.offer_2,
+            service.offer_3,
+            JSON.stringify(service.equips),
+            service.price_wage,
+            service.total_price
         ]
 
         db.runSql(sql, params).then(async (result) => {
-            // khi da thuc hien bao duong, thi cac lich hen truoc do coi nhu finished
-            sql = `UPDATE lich_hen
-                    SET status=1,
-                        update_user=?,
-                        update_datetime=strftime('%s', datetime('now', 'localtime'))
-                    WHERE khach_hang_xe_id=? AND book_date < strftime('%s', datetime('now', 'localtime'))`
-            params = [req.userInfo.id, khach_hang_xe_id]
-            db.runSql(sql, params)
-            // khi da thuc hien bao duong, thi cac tracking_status dich vu cac lan truoc coi nhu finished
-            sql = ` UPDATE bao_duong
-                    SET tracking_status = 0
-                        ,update_user=?
-                        ,update_datetime =strftime('%s', datetime('now', 'localtime'))
-                    WHERE khach_hang_xe_id=? AND tracking_status = 1 AND id < ?`
-            params = [req.userInfo.id, khach_hang_xe_id, result.lastID]
-            db.runSql(sql, params)
-            // cap nhat id lan cuoi bao duong vao khach_hang_xe -> muc dich de bao cao cho nhanh
-            sql = ` UPDATE khach_hang_xe
-                SET bao_duong_id = ?
-                WHERE id=?`
-            params = [result.lastID, khach_hang_xe_id]
-            db.runSql(sql, params)
-
-            sql = `update khach_hang
-                    set next_book_date = NULL,
-                    bao_duong_id=?,
-                    last_maintance_date=strftime('%s', datetime('now', 'localtime')),
-                    last_visit_date=strftime('%s', datetime('now', 'localtime')),
-                    update_user=?,
-                    update_datetime=strftime('%s', datetime('now', 'localtime'))
-                where id=(select max(khach_hang_id) from khach_hang_xe where id=?)`
-            params = [result.lastID, req.userInfo.id, khach_hang_xe_id]
-
-            let updateResult = await db.runSql(sql, params)
-            return updateResult.hasOwnProperty('lastID') ? result.lastID : Promise.reject(updateResult)
-        }).then(bao_duong_id => {
-            let placeholder = maintance.details.map((bao_duong, index) => '(?,?,?)').join(',')
-            sql = 'INSERT INTO bao_duong_chi_phi (bao_duong_id, loai_bao_duong_id, price) VALUES ' + placeholder
-
-            params = maintance.details.reduce((result, e, idx) => {
-                result = [...result, bao_duong_id, e.loai_bao_duong.id, e.price]
-                return result
-            }, [])
-
-            return db.runSql(sql, params).then(result => {
-                _updateBaoDuongSum(bao_duong_id)
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả bảo dưỡng thành công', count:result.changes, id:result.lastID}))
-            })
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Lưu thông tin dịch vụ thành công'}))
         })
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
