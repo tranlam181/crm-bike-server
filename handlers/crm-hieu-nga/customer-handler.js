@@ -824,100 +824,39 @@ class Handler {
     }
 
     addCallout(req, res, next) {
-        let khach_hang_xe_id = req.params.khach_hang_xe_id
         let callout = req.json_data
-        callout.is_free = (callout.is_free ? 1 : 0)
-        callout.book_date = callout.book_date.replace('T',' ').replace('Z','')
 
-        let sql = `INSERT INTO goi_ra (khach_hang_xe_id,
-                        cua_hang_id,
-                        muc_dich_goi_ra_id,
-                        ket_qua_goi_ra_id,
-                        note,
-                        call_date,
-                        update_user,
-                        create_datetime)
-                    VALUES (?,
-                        (SELECT MAX(cua_hang_id) FROM khach_hang_xe WHERE id=?),
+        let sql = `INSERT INTO goi_ra (
+                            khach_hang_id,
+                            xe_id,
+                            muc_dich_goi_ra_id,
+                            ket_qua_goi_ra_id,
+                            note,
+                            call_date,
+                            update_user,
+                            create_datetime)
+                    VALUES (
+                        ?,
+                        ?,
                         ?,
                         ?,
                         ?,
                         strftime('%s', datetime('now', 'localtime')),
                         ?,
-                        strftime('%s', datetime('now', 'localtime')))`
+                        strftime('%s', datetime('now', 'localtime'))
+                    )`
         let params = [
-            khach_hang_xe_id,
-            khach_hang_xe_id,
+            callout.khach_hang_id,
+            callout.xe_id,
             callout.muc_dich_goi_ra_id,
-            callout.ket_qua_goi_ra_id,
+            callout.y_kien_mua_xe_id,
             callout.note,
             req.userInfo.id
         ]
 
-        db.runSql(sql, params).then(goi_ra_result => {
-            // cap nhat id lan cuoi goi ra vao khach_hang_xe -> muc dich de bao cao cho nhanh
-            sql = ` UPDATE khach_hang_xe
-                    SET goi_ra_id = ?,
-                        call_out_date = strftime('%s', datetime('now', 'localtime'))
-                    WHERE id = ?`
-            params = [goi_ra_result.lastID, khach_hang_xe_id]
-            db.runSql(sql, params)
-
-            sql = `update khach_hang
-                    SET goi_ra_id=?,
-                        ket_qua_goi_ra_id=?,
-                        last_call_out_date=strftime('%s', datetime('now', 'localtime')),
-                        next_book_date=strftime('%s',?),
-                        update_user=?,
-                        update_datetime=strftime('%s', datetime('now', 'localtime'))
-                    WHERE id=(select khach_hang_id from khach_hang_xe where id=?)`
-            params = [goi_ra_result.lastID,
-                callout.ket_qua_goi_ra_id,
-                callout.book_date,
-                req.userInfo.id,
-                khach_hang_xe_id
-            ]
-
-            return db.runSql(sql, params)
-        }).then(data => {
-            if (!callout.book_date) {
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
-            } else {
-                // Finish tat ca lich hen truoc do
-                sql = `UPDATE lich_hen
-                        SET status=1,
-                            update_user=?,
-                            update_datetime=strftime('%s', datetime('now', 'localtime'))
-                    WHERE khach_hang_xe_id=? and book_date < strftime('%s', datetime('now', 'localtime'))`
-                params = [req.userInfo.id, khach_hang_xe_id]
-                db.runSql(sql, params)
-
-                sql = `INSERT INTO lich_hen (khach_hang_xe_id,
-                            dich_vu_id,
-                            book_date,
-                            is_free,
-                            update_user,
-                            create_datetime)
-                        VALUES (?,
-                        ?,
-                        strftime('%s', ?),
-                        ?,
-                        ?,
-                        strftime('%s', datetime('now', 'localtime')))`
-                params = [
-                    khach_hang_xe_id,
-                    callout.dich_vu_id,
-                    callout.book_date,
-                    callout.is_free,
-                    req.userInfo.id
-                ]
-
-                return db.runSql(sql, params).then(result => {
-                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                    res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công', count:result.changes, id:result.lastID}))
-                })
-            }
+        db.runSql(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
         })
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
@@ -1003,6 +942,75 @@ class Handler {
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
+    }
+
+    getServices(req, res, next) {
+        let xe_id = req.query.xe_id
+
+        if (!xe_id || xe_id=='undefined') xe_id = ''
+
+        db.getRsts(`select
+                        loai_bao_duong_id,
+                        xe_id,
+                        service_date,
+                        in_date,
+                        out_date,
+                        reception_staff,
+                        repaire_staff_1,
+                        repaire_staff_2,
+                        check_staff,
+                        customer_require,
+                        is_keep_old_equip,
+                        offer_1,
+                        offer_2,
+                        offer_3,
+                        equips,
+                        price_wage,
+                        total_price,
+                        call_date,
+                        y_kien_dich_vu_id
+                    from  dich_vu where xe_id=?
+                    order by service_date`,
+                    [xe_id]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getCallouts(req, res, next) {
+        let xe_id = req.query.xe_id
+
+        if (!xe_id || xe_id=='undefined') xe_id = ''
+
+        db.getRsts(`select
+                        muc_dich_goi_ra_id,
+                        ket_qua_goi_ra_id,
+                        note,
+                        call_date,
+                        update_user
+                    from  goi_ra
+                    where xe_id=?
+                    order by call_date`,
+                    [xe_id]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
     }
 
     reportCallout(req, res, next) {

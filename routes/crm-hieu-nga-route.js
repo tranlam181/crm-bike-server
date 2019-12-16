@@ -103,7 +103,11 @@ router.put('/callouts/after-buy'
     , postHandler.jsonProcess
     , customerHanlder.updateFeedbackAfterBuy
 );
-router.post('/customers-bikes/:khach_hang_xe_id/callouts'
+router.get('/callouts'
+    , tokenUtil.checkToken
+    , customerHanlder.getCallouts
+);
+router.post('/callouts'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.addCallout
@@ -112,6 +116,10 @@ router.post('/services'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.addService
+);
+router.get('/services'
+    , tokenUtil.checkToken
+    , customerHanlder.getServices
 );
 router.get('/report-callouts'
     , tokenUtil.checkToken

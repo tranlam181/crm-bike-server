@@ -103,7 +103,15 @@ class Handler {
     }
 
     getBuyOpinions(req, res, next) {
-        db.getRsts("select id,name from  dm_ket_qua_goi_ra where muc_dich_goi_ra_id=3 order by id"
+        let muc_dich_goi_ra_id = req.query.muc_dich_goi_ra_id
+
+        if (!muc_dich_goi_ra_id || muc_dich_goi_ra_id=='undefined') muc_dich_goi_ra_id = ''
+
+        db.getRsts(`select id,name
+                    from  dm_ket_qua_goi_ra
+                    where (? IS NULL OR muc_dich_goi_ra_id=?)
+                    order by id`,
+                    [muc_dich_goi_ra_id, muc_dich_goi_ra_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
