@@ -278,9 +278,7 @@ class Handler {
             //             AND a.buy_date >= strftime ('%s', date('now', '-30 day'))
             case 'after10BuyDate':
                 sql += ` FROM xe a , khach_hang b
-                    WHERE
-                        a.y_kien_mua_xe_id IS NULL
-
+                    WHERE a.y_kien_mua_xe_id IS NULL
                         AND (? IS NULL OR a.cua_hang_id=?)
                         AND a.khach_hang_id=b.id
                     ORDER BY a.buy_date
@@ -288,25 +286,20 @@ class Handler {
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
 
-            case 'after3MaintanceDate':
-                sql += ` , c.id as bao_duong_id
-                        , strftime ('%d/%m/%Y', c.maintance_date, 'unixepoch') AS maintance_date
-                        , (select max(name) from dm_kieu_bao_duong where id=c.kieu_bao_duong_id) as maintance_name
-                        , c.feedback
-                        , c.is_complain
-                        , (SELECT MAX(name) FROM dm_loai_xe WHERE id=b.loai_xe_id) AS bike_name
-                    FROM bao_duong c, khach_hang_xe b, khach_hang a
-                    WHERE
-                        (
-                            (  c.maintance_date <= strftime ('%s', date('now', '-3 day'))
-                                AND c.maintance_date >= strftime ('%s', date('now', '-13 day'))
-                                AND c.feedback IS NULL )
-                            OR c.tracking_status = 1
-                        )
-                        AND c.khach_hang_xe_id = b.id
-                        AND b.khach_hang_id = a.id
+            case 'afterMaintanceDate':
+                //     AND (  c.service_date <= strftime ('%s', date('now', '-7 day'))
+                //     AND c.service_date >= strftime ('%s', date('now', '-17 day'))
+                //     AND c.y_kien_dich_vu_id IS NULL
+                // )
+                sql += `    ,c.id AS dich_vu_id
+                            ,strftime ('%d/%m/%Y', c.service_date, 'unixepoch') AS service_date
+                            ,(select max(name) from dm_loai_bao_duong where id=c.loai_bao_duong_id) loai_bao_duong
+                        FROM xe a , khach_hang b, dich_vu c
+                        WHERE a.khach_hang_id=b.id
+                        AND a.id=c.xe_id
+
                         AND (? IS NULL OR a.cua_hang_id=?)
-                    ORDER BY IFNULL(c.is_complain, 99), c.maintance_date
+                    ORDER BY c.service_date
                     LIMIT 30`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
