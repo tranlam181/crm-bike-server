@@ -646,110 +646,53 @@ class Handler {
     }
 
     updateFeedbackAfterMaintance(req, res, next) {
-        let bao_duong_id = req.params.bao_duong_id
         let feedback = req.json_data
-        feedback.is_complain = (feedback.is_complain ? 1 : 0)
-        feedback.is_free = (feedback.is_free ? 1 : 0)
-        feedback.book_date = feedback.book_date.replace('T',' ').replace('Z','')
-
-        // ban than viec cap nhat y kien dich vu cung la goi ra
-        // cho nen can bo sung 1 bang ghi goi ra voi ket_qua_goi_ra_id=14 :Xin y kien dich vu
-        let sql = `INSERT INTO goi_ra (khach_hang_xe_id,
-                cua_hang_id,
-                muc_dich_goi_ra_id,
-                ket_qua_goi_ra_id,
-                note,
-                call_date,
-                update_user,
-                create_datetime)
-            VALUES ((SELECT MAX(khach_hang_xe_id) FROM bao_duong where id=?),
-                (SELECT MAX(cua_hang_id) FROM bao_duong where id=?),
-                ?,
-                ?,
-                ?,
-                strftime('%s', datetime('now', 'localtime')),
-                ?,
-                strftime('%s', datetime('now', 'localtime')))`
+        let sql = `INSERT INTO goi_ra (
+                        khach_hang_id,
+                        xe_id,
+                        muc_dich_goi_ra_id,
+                        ket_qua_goi_ra_id,
+                        note,
+                        call_date,
+                        update_user,
+                        create_datetime)
+                VALUES (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    strftime('%s', datetime('now', 'localtime')),
+                    ?,
+                    strftime('%s', datetime('now', 'localtime'))
+                )`
         let params = [
-            bao_duong_id,
-            bao_duong_id,
-            4, // muc dich: Hoi tham sau bao duong
-            14, // Xin y kien bao duong
-            feedback.feedback,
+            feedback.khach_hang_id,
+            feedback.xe_id,
+            2, // feedback.muc_dich_goi_ra_id,
+            feedback.y_kien_dich_vu_id, // feedback.ket_qua_goi_ra_id,
+            feedback.note,
             req.userInfo.id
         ]
-        db.runSql(sql, params)
 
-        sql = `UPDATE bao_duong
-                    SET  feedback=?
-                        , feedback_date=strftime('%s', datetime('now', 'localtime'))
-                        , is_complain=?
-                        , tracking_status=${feedback.is_complain == 1 ? 1 : 0}
-                        , update_user = ?
-                        , update_datetime = strftime('%s', datetime('now', 'localtime'))
+        db.runSql(sql, params).then(goi_ra => {
+            sql = `update dich_vu
+                    SET call_date=strftime('%s', datetime('now', 'localtime')),
+                        y_kien_dich_vu_id=?,
+                        thai_do_nhan_vien_id=?,
+                        note=?
                     WHERE id=?`
-        params = [
-            feedback.feedback,
-            feedback.is_complain,
-            req.userInfo.id,
-            bao_duong_id
-        ]
-
-        db.runSql(sql, params).then(result => {
-            // res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            // res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công', count:result.changes, id:result.lastID}))
-            return "OK"
-        }).then(msg => {
-            if (!feedback.book_date) {
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
-                throw new Error(STOP_PROMISE_CHAIN)
-            } else {
-                sql = `INSERT INTO lich_hen (khach_hang_xe_id,
-                            dich_vu_id,
-                            book_date,
-                            is_free,
-                            update_user,
-                            create_datetime)
-                        VALUES ((select max(khach_hang_xe_id) from bao_duong where id=?),
-                        ?,
-                        strftime('%s', ?),
-                        ?,
-                        strftime('%s', datetime('now', 'localtime')))`
-                params = [
-                    bao_duong_id,
-                    feedback.dich_vu_id,
-                    feedback.book_date,
-                    feedback.is_free,
-                    req.userInfo.id
-                ]
-
-                return db.runSql(sql, params)
-            }
-        }).then(obj => {
-            sql = `UPDATE khach_hang
-                    SET last_call_out_date = strftime ('%s', datetime ('now', 'localtime'))
-                        , next_book_date = strftime ('%s', ?)
-                        , goi_ra_id = NULL
-                        , ket_qua_goi_ra_id = 2 -- KH dat hen
-                        , update_user = ?
-                        , update_datetime = strftime('%s', datetime('now', 'localtime'))
-                    WHERE id = (SELECT MAX (khach_hang_id)
-                                FROM khach_hang_xe
-                                WHERE id = (SELECT MAX (khach_hang_xe_id)
-                                            FROM bao_duong
-                                            WHERE id = ?))`
             params = [
-                feedback.book_date,
-                req.userInfo.id,
-                bao_duong_id
+                feedback.y_kien_dich_vu_id,
+                feedback.thai_do_nhan_vien_id,
+                feedback.note,
+                feedback.dich_vu_id,
             ]
             return db.runSql(sql, params).then(result => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công', count:result.changes, id:result.lastID}))
             })
-        })
-        .catch(err => {
+        }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
@@ -847,9 +790,20 @@ class Handler {
             req.userInfo.id
         ]
 
-        db.runSql(sql, params).then(result => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
+        db.runSql(sql, params).then(goi_ra => {
+            sql = `update xe
+                    SET goi_ra_id=?,
+                        call_date=strftime('%s', datetime('now', 'localtime'))
+                    WHERE id=?`
+            params = [
+                goi_ra.lastID,
+                callout.xe_id,
+            ]
+
+            return db.runSql(sql, params).then(() => {
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+                res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
+            })
         })
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))

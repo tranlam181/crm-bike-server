@@ -239,6 +239,16 @@ class Handler {
         });
     }
 
+    getStaffAttitude(req, res, next) {
+        db.getRsts("select id, name from dm_thai_do_nhan_vien", []
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
     getBikeColors(req, res, next) {
         db.getRsts("select id, name from dm_mau_xe", []
         ).then(row => {

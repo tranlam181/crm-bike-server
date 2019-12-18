@@ -51,6 +51,9 @@ router.get('/category/service-types'
 router.get('/category/callout-purposes'
     , categoryHandler.getCalloutPurposes
 );
+router.get('/category/staff-attitudes'
+    , categoryHandler.getStaffAttitude
+);
 router.post('/customers'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
@@ -88,7 +91,7 @@ router.get('/maintances/:bao_duong_id/details'
     , tokenUtil.checkToken
     , customerHanlder.getMaintanceDetails
 );
-router.put('/maintances/:bao_duong_id'
+router.put('/callouts/after-service'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.updateFeedbackAfterMaintance
