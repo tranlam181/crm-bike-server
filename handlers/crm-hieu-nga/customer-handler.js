@@ -294,6 +294,8 @@ class Handler {
                 sql += `    ,c.id AS dich_vu_id
                             ,strftime ('%d/%m/%Y', c.service_date, 'unixepoch') AS service_date
                             ,(select max(name) from dm_loai_bao_duong where id=c.loai_bao_duong_id) loai_bao_duong
+                            ,c.offer_1
+                            ,c.total_price
                         FROM xe a , khach_hang b, dich_vu c
                         WHERE a.khach_hang_id=b.id
                         AND a.id=c.xe_id
@@ -898,14 +900,15 @@ class Handler {
 
         db.getRsts(`select
                         loai_bao_duong_id,
+                        (select max(name) from dm_loai_bao_duong where id=dich_vu.loai_bao_duong_id) as loai_bao_duong,
                         xe_id,
-                        service_date,
-                        in_date,
-                        out_date,
-                        reception_staff,
-                        repaire_staff_1,
-                        repaire_staff_2,
-                        check_staff,
+                        strftime ('%d/%m/%Y', service_date, 'unixepoch') AS service_date,
+                        strftime ('%d/%m/%Y %H:%m', in_date, 'unixepoch') AS in_date,
+                        strftime ('%d/%m/%Y %H:%m', out_date, 'unixepoch') AS out_date,
+                        (select max(name) from dm_nhan_vien where id=dich_vu.reception_staff) as reception_staff,
+                        (select max(name) from dm_nhan_vien where id=dich_vu.repaire_staff_1) as repaire_staff_1,
+                        (select max(name) from dm_nhan_vien where id=dich_vu.repaire_staff_2) as repaire_staff_2,
+                        (select max(name) from dm_nhan_vien where id=dich_vu.check_staff) as check_staff,
                         customer_require,
                         is_keep_old_equip,
                         offer_1,
@@ -919,6 +922,45 @@ class Handler {
                     from  dich_vu where xe_id=?
                     order by service_date`,
                     [xe_id]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row
+                , (key, value) => {
+                    if (value === null) { return undefined; }
+                    return value;
+                }
+            ));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getService(req, res, next) {
+        let dich_vu_id = req.params.dich_vu_id
+
+        db.getRst(`select
+                        loai_bao_duong_id,
+                        (select max(name) from dm_loai_bao_duong where id=dich_vu.loai_bao_duong_id) as loai_bao_duong,
+                        xe_id,
+                        strftime ('%d/%m/%Y', service_date, 'unixepoch') AS service_date,
+                        strftime ('%d/%m/%Y %H:%m', in_date, 'unixepoch') AS in_date,
+                        strftime ('%d/%m/%Y %H:%m', out_date, 'unixepoch') AS out_date,
+                        (select max(name) from dm_nhan_vien where id=dich_vu.reception_staff) as reception_staff,
+                        (select max(name) from dm_nhan_vien where id=dich_vu.repaire_staff_1) as repaire_staff_1,
+                        (select max(name) from dm_nhan_vien where id=dich_vu.repaire_staff_2) as repaire_staff_2,
+                        (select max(name) from dm_nhan_vien where id=dich_vu.check_staff) as check_staff,
+                        customer_require,
+                        is_keep_old_equip,
+                        offer_1,
+                        offer_2,
+                        offer_3,
+                        equips,
+                        price_wage,
+                        total_price,
+                        call_date,
+                        y_kien_dich_vu_id
+                    from  dich_vu where id=?`,
+                    [dich_vu_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row

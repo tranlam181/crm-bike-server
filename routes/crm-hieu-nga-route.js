@@ -124,6 +124,10 @@ router.get('/services'
     , tokenUtil.checkToken
     , customerHanlder.getServices
 );
+router.get('/services/:dich_vu_id'
+    , tokenUtil.checkToken
+    , customerHanlder.getService
+);
 router.get('/report-callouts'
     , tokenUtil.checkToken
     , customerHanlder.reportCallout
