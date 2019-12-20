@@ -263,7 +263,7 @@ class Handler {
                 a.bike_number,
                 strftime ('%d/%m/%Y', a.buy_date, 'unixepoch') AS buy_date,
                 a.warranty_number,
-                strftime ('%d/%m/%Y', a.call_date, 'unixepoch') AS call_date,
+                strftime ('%d/%m/%Y', a.last_call_date, 'unixepoch') AS call_date,
                 b.full_name,
                 b.phone,
                 b.phone_2,
@@ -289,19 +289,46 @@ class Handler {
             case 'afterMaintanceDate':
                 //     AND (  c.service_date <= strftime ('%s', date('now', '-7 day'))
                 //     AND c.service_date >= strftime ('%s', date('now', '-17 day'))
-                //     AND c.y_kien_dich_vu_id IS NULL
                 // )
                 sql += `    ,c.id AS dich_vu_id
                             ,strftime ('%d/%m/%Y', c.service_date, 'unixepoch') AS service_date
                             ,(select max(name) from dm_loai_bao_duong where id=c.loai_bao_duong_id) loai_bao_duong
                             ,c.offer_1
                             ,c.total_price
-                        FROM xe a , khach_hang b, dich_vu c
+                        FROM xe a, khach_hang b, dich_vu c
                         WHERE a.khach_hang_id=b.id
-                        AND a.id=c.xe_id
-
-                        AND (? IS NULL OR a.cua_hang_id=?)
+                            AND a.id=c.xe_id
+                            AND c.y_kien_dich_vu_id IS NULL
+                            AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY c.service_date
+                    LIMIT 30`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
+                break;
+
+            case 'ktdk6':
+                    // a.buy_date >= strftime ('%s', date('now', '-1000 day'))
+                    // AND a.buy_date < strftime ('%s', date('now', '-998 day'))
+                    // AND
+                sql += ` , strftime('%d/%m/%Y', date(a.buy_date, 'unixepoch', '+1000 day')) AS invite_date
+                    FROM xe a , khach_hang b
+                    WHERE  (? IS NULL OR a.cua_hang_id=?)
+                        AND (a.last_service_date IS NULL OR a.last_service_date < strftime('%s', date(a.buy_date, 'unixepoch', '+1000 day')))
+                        AND a.khach_hang_id=b.id
+                    ORDER BY a.buy_date
+                    LIMIT 30`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
+                break;
+
+            case 'ktdk7':
+                    // a.buy_date >= strftime ('%s', date('now', '-1185 day'))
+                    // AND a.buy_date < strftime ('%s', date('now', '-1183 day'))
+                    // AND
+                sql += ` , strftime('%d/%m/%Y', date(a.buy_date, 'unixepoch', '+1185 day')) AS invite_date
+                    FROM xe a , khach_hang b
+                    WHERE  (? IS NULL OR a.cua_hang_id=?)
+                        AND (a.last_service_date IS NULL OR a.last_service_date < strftime('%s', date(a.buy_date, 'unixepoch', '+1185 day')))
+                        AND a.khach_hang_id=b.id
+                    ORDER BY a.buy_date
                     LIMIT 30`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
@@ -316,17 +343,6 @@ class Handler {
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
 
-            case 'coming':
-                sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
-                        ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
-                    FROM khach_hang a LEFT OUTER JOIN goi_ra gr ON a.goi_ra_id = gr.id
-                    WHERE next_book_date <= strftime('%s', date('now', '+10 day'))
-                        AND (? IS NULL OR a.cua_hang_id=?)
-                    ORDER BY a.next_book_date, full_name_no_sign
-                    LIMIT 30`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
-
             case 'passive':
                 sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
                         ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
@@ -338,23 +354,6 @@ class Handler {
                         WHEN a.ket_qua_goi_ra_id IS NULL THEN 2
                         ELSE 99
                     END), a.last_call_out_date
-                    LIMIT 30`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
-
-            case 'active':
-                sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
-                        ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
-                    FROM khach_hang a LEFT OUTER JOIN goi_ra gr ON a.goi_ra_id = gr.id
-                    WHERE strftime ('%s', date('now', '-6 month')) < a.last_visit_date
-                        AND (? IS NULL OR a.cua_hang_id=?)
-                    ORDER BY
-                        (CASE WHEN a.ket_qua_goi_ra_id IN (9, 3) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
-                              --WHEN IFNULL(a.ket_qua_goi_ra_id, 0) NOT IN (9, 3) AND a.last_visit_date >= strftime ('%s', date('now', '-2 month', '-14 day')) AND a.last_visit_date <= strftime ('%s', date('now', '-2 month', '+7 day')) THEN 2
-                              --WHEN a.last_call_out_date IS NULL AND a.last_visit_date < strftime ('%s', date('now', '-2 month', '-14 day')) THEN 3
-                              WHEN a.last_call_out_date IS NULL THEN 4
-                              ELSE 99
-                        END), a.last_visit_date
                     LIMIT 30`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
@@ -399,7 +398,6 @@ class Handler {
                     (SELECT MAX (name)
                         FROM dm_dia_ly
                         WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,
-                    strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,
                     CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,
                     job,
                     address
@@ -429,7 +427,7 @@ class Handler {
                     strftime ('%d/%m/%Y', buy_date, 'unixepoch') AS buy_date,
                     warranty_number,
                     y_kien_mua_xe_id,
-                    strftime ('%d/%m/%Y', call_date, 'unixepoch') AS call_date
+                    strftime ('%d/%m/%Y', last_call_date, 'unixepoch') AS call_date
             from xe
             where id=?`, [xe_id]
         ).then(row => {
@@ -619,22 +617,22 @@ class Handler {
             feedback.khach_hang_id,
             feedback.xe_id,
             3, // feedback.muc_dich_goi_ra_id,
-            feedback.y_kien_mua_xe_id, // feedback.ket_qua_goi_ra_id,
+            feedback.ket_qua_goi_ra_id, // feedback.ket_qua_goi_ra_id,
             feedback.note,
             req.userInfo.id
         ]
 
         db.runSql(sql, params).then(goi_ra => {
             sql = `update xe
-                    SET goi_ra_id=?,
+                    SET last_goi_ra_id=?,
                         note_1=?,
                         y_kien_mua_xe_id=?,
-                        call_date=strftime('%s', datetime('now', 'localtime'))
+                        last_call_date=strftime('%s', datetime('now', 'localtime'))
                     WHERE id=?`
             params = [
                 goi_ra.lastID,
                 feedback.note,
-                feedback.y_kien_mua_xe_id,
+                feedback.ket_qua_goi_ra_id,
                 feedback.xe_id,
             ]
             return db.runSql(sql, params).then(result => {
@@ -657,7 +655,8 @@ class Handler {
                         note,
                         call_date,
                         update_user,
-                        create_datetime)
+                        create_datetime,
+                        dich_vu_id)
                 VALUES (
                     ?,
                     ?,
@@ -666,7 +665,8 @@ class Handler {
                     ?,
                     strftime('%s', datetime('now', 'localtime')),
                     ?,
-                    strftime('%s', datetime('now', 'localtime'))
+                    strftime('%s', datetime('now', 'localtime')),
+                    ?
                 )`
         let params = [
             feedback.khach_hang_id,
@@ -674,7 +674,8 @@ class Handler {
             2, // feedback.muc_dich_goi_ra_id,
             feedback.y_kien_dich_vu_id, // feedback.ket_qua_goi_ra_id,
             feedback.note,
-            req.userInfo.id
+            req.userInfo.id,
+            feedback.dich_vu_id,
         ]
 
         db.runSql(sql, params).then(goi_ra => {
@@ -787,15 +788,15 @@ class Handler {
             callout.khach_hang_id,
             callout.xe_id,
             callout.muc_dich_goi_ra_id,
-            callout.y_kien_mua_xe_id,
+            callout.ket_qua_goi_ra_id,
             callout.note,
             req.userInfo.id
         ]
 
         db.runSql(sql, params).then(goi_ra => {
             sql = `update xe
-                    SET goi_ra_id=?,
-                        call_date=strftime('%s', datetime('now', 'localtime'))
+                    SET last_goi_ra_id=?,
+                        last_call_date=strftime('%s', datetime('now', 'localtime'))
                     WHERE id=?`
             params = [
                 goi_ra.lastID,
@@ -884,7 +885,14 @@ class Handler {
             service.total_price
         ]
 
-        db.runSql(sql, params).then(async (result) => {
+        db.runSql(sql, params).then(async (dich_vu) => {
+            sql = `UPDATE xe
+                    SET last_dich_vu_id=?,
+                        last_service_date=strftime('%s', datetime('now', 'localtime'))
+                    WHERE id=?`
+
+            await db.runSql(sql, [dich_vu.lastID, service.xe_id])
+
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
             res.end(JSON.stringify({status:'OK', msg:'Lưu thông tin dịch vụ thành công'}))
         })
