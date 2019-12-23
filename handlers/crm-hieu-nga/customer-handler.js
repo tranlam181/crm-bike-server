@@ -334,27 +334,20 @@ class Handler {
                 break;
 
             case 'birthday':
-                sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
-                        ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
-                    FROM khach_hang a LEFT OUTER JOIN goi_ra gr ON a.goi_ra_id = gr.id
-                    WHERE	  strftime ('%m', birthday, 'unixepoch') = strftime ('%m', 'now')
-                        AND (? IS NULL OR a.cua_hang_id=?)
-                    ORDER BY CAST (strftime ('%d', birthday, 'unixepoch') AS DECIMAL), full_name_no_sign`
+                sql += ` FROM xe a , khach_hang b
+                    WHERE  (? IS NULL OR a.cua_hang_id=?)
+                        AND a.khach_hang_id=b.id
+                        AND strftime ('%m', b.birthday, 'unixepoch') = strftime ('%m', 'now')
+                    ORDER BY CAST (strftime ('%d', b.birthday, 'unixepoch') AS DECIMAL), b.full_name_no_sign`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
 
-            case 'passive':
-                sql += ` ,(SELECT MAX(name) FROM dm_ket_qua_goi_ra WHERE id=a.ket_qua_goi_ra_id) as call_out_result
-                        ,(SELECT MAX(name) FROM dm_muc_dich_goi_ra WHERE id=gr.muc_dich_goi_ra_id) as call_out_purpose
-                    FROM khach_hang a LEFT OUTER JOIN goi_ra gr ON a.goi_ra_id = gr.id
-                    WHERE (last_visit_date IS NULL OR strftime ('%s', date('now', '-6 month')) >= last_visit_date)
-                        AND (? IS NULL OR a.cua_hang_id=?)
-                    ORDER BY (CASE
-                        WHEN a.ket_qua_goi_ra_id IN (9, 3) AND strftime ('%s', date('now', '-3 day')) >= a.last_call_out_date THEN 1
-                        WHEN a.ket_qua_goi_ra_id IS NULL THEN 2
-                        ELSE 99
-                    END), a.last_call_out_date
-                    LIMIT 30`
+            case 'random':
+                sql += ` FROM xe a , khach_hang b
+                WHERE  (? IS NULL OR a.cua_hang_id=?)
+                    AND a.khach_hang_id=b.id
+                LIMIT 50
+                OFFSET ABS(RANDOM()) % MAX((SELECT COUNT(*) FROM xe), 1)`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
 
@@ -991,7 +984,7 @@ class Handler {
                         muc_dich_goi_ra_id,
                         ket_qua_goi_ra_id,
                         note,
-                        call_date,
+                        strftime ('%d/%m/%Y', call_date, 'unixepoch') AS call_date,
                         update_user
                     from  goi_ra
                     where xe_id=?
