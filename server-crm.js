@@ -19,6 +19,7 @@ function main(isHttp, isHttps) {
   //su dung auth user
   app.use('/crm/auth',  require('./routes/auth'));
   app.use('/crm/api', require('./routes/crm'));
+  app.use('/crm/hieu-nga/auth',  require('./routes/crm-hieu-nga-auth'));
   app.use('/crm/hieu-nga/api', require('./routes/crm-hieu-nga-route'));
 
   //ham tra loi cac dia chi khong co

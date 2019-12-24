@@ -263,7 +263,7 @@ class Handler {
                 a.bike_number,
                 strftime ('%d/%m/%Y', a.buy_date, 'unixepoch') AS buy_date,
                 a.warranty_number,
-                strftime ('%d/%m/%Y', a.last_call_date, 'unixepoch') AS call_date,
+                strftime ('%d/%m/%Y', a.last_call_date, 'unixepoch') AS last_call_date,
                 b.full_name,
                 b.phone,
                 b.phone_2,
@@ -334,7 +334,11 @@ class Handler {
                 break;
 
             case 'birthday':
-                sql += ` FROM xe a , khach_hang b
+                sql += `,(select max(name) from dm_muc_dich_goi_ra where id=a.last_muc_dich_goi_ra_id) last_muc_dich_goi_ra
+                        ,(select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id AND muc_dich_goi_ra_id=a.last_muc_dich_goi_ra_id) last_ket_qua_goi_ra
+                        ,(select max(name) from dm_loai_bao_duong where id=a.last_loai_bao_duong_id) last_loai_bao_duong
+                        ,strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
+                    FROM xe a , khach_hang b
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
                         AND a.khach_hang_id=b.id
                         AND strftime ('%m', b.birthday, 'unixepoch') = strftime ('%m', 'now')
@@ -343,16 +347,27 @@ class Handler {
                 break;
 
             case 'random':
-                sql += ` FROM xe a , khach_hang b
+                sql += `,(select max(name) from dm_muc_dich_goi_ra where id=a.last_muc_dich_goi_ra_id) last_muc_dich_goi_ra
+                        ,(select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id AND muc_dich_goi_ra_id=a.last_muc_dich_goi_ra_id) last_ket_qua_goi_ra
+                        ,(select max(name) from dm_loai_bao_duong where id=a.last_loai_bao_duong_id) last_loai_bao_duong
+                        ,strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
+                FROM xe a , khach_hang b
                 WHERE  (? IS NULL OR a.cua_hang_id=?)
                     AND a.khach_hang_id=b.id
                 LIMIT 50
-                OFFSET ABS(RANDOM()) % MAX((SELECT COUNT(*) FROM xe), 1)`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
+                OFFSET ABS(RANDOM()) % MAX((SELECT COUNT(*) FROM xe WHERE (? IS NULL OR cua_hang_id=?)), 1)`
+                params = [userInfo.cua_hang_id,
+                        userInfo.cua_hang_id,
+                        userInfo.cua_hang_id,
+                        userInfo.cua_hang_id]
                 break;
 
             default:
-                sql += ` FROM xe a , khach_hang b
+                sql += `,(select max(name) from dm_muc_dich_goi_ra where id=a.last_muc_dich_goi_ra_id) last_muc_dich_goi_ra
+                        ,(select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id AND muc_dich_goi_ra_id=a.last_muc_dich_goi_ra_id) last_ket_qua_goi_ra
+                        ,(select max(name) from dm_loai_bao_duong where id=a.last_loai_bao_duong_id) last_loai_bao_duong
+                        ,strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
+                    FROM xe a , khach_hang b
                     WHERE
                         a.khach_hang_id=b.id
                         AND (
@@ -617,15 +632,19 @@ class Handler {
 
         db.runSql(sql, params).then(goi_ra => {
             sql = `update xe
-                    SET last_goi_ra_id=?,
+                    SET y_kien_mua_xe_id=?,
+                        last_goi_ra_id=?,
+                        last_muc_dich_goi_ra_id=?,
+                        last_ket_qua_goi_ra_id=?,
                         note_1=?,
-                        y_kien_mua_xe_id=?,
                         last_call_date=strftime('%s', datetime('now', 'localtime'))
                     WHERE id=?`
             params = [
-                goi_ra.lastID,
-                feedback.note,
                 feedback.ket_qua_goi_ra_id,
+                goi_ra.lastID,
+                3,
+                feedback.ket_qua_goi_ra_id,
+                feedback.note,
                 feedback.xe_id,
             ]
             return db.runSql(sql, params).then(result => {
@@ -789,10 +808,14 @@ class Handler {
         db.runSql(sql, params).then(goi_ra => {
             sql = `update xe
                     SET last_goi_ra_id=?,
+                        last_muc_dich_goi_ra_id=?,
+                        last_ket_qua_goi_ra_id=?,
                         last_call_date=strftime('%s', datetime('now', 'localtime'))
                     WHERE id=?`
             params = [
                 goi_ra.lastID,
+                callout.muc_dich_goi_ra_id,
+                callout.ket_qua_goi_ra_id,
                 callout.xe_id,
             ]
 
@@ -881,10 +904,11 @@ class Handler {
         db.runSql(sql, params).then(async (dich_vu) => {
             sql = `UPDATE xe
                     SET last_dich_vu_id=?,
+                        last_loai_bao_duong_id=?,
                         last_service_date=strftime('%s', datetime('now', 'localtime'))
                     WHERE id=?`
 
-            await db.runSql(sql, [dich_vu.lastID, service.xe_id])
+            await db.runSql(sql, [dich_vu.lastID, service.loai_bao_duong_id, service.xe_id])
 
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
             res.end(JSON.stringify({status:'OK', msg:'Lưu thông tin dịch vụ thành công'}))
@@ -981,11 +1005,11 @@ class Handler {
         if (!xe_id || xe_id=='undefined') xe_id = ''
 
         db.getRsts(`select
-                        muc_dich_goi_ra_id,
-                        ket_qua_goi_ra_id,
+                        (select max(name) from dm_muc_dich_goi_ra where id=goi_ra.muc_dich_goi_ra_id) muc_dich_goi_ra_id,
+                        (select max(name) from dm_ket_qua_goi_ra where id=goi_ra.ket_qua_goi_ra_id AND muc_dich_goi_ra_id=goi_ra.muc_dich_goi_ra_id) ket_qua_goi_ra_id,
                         note,
                         strftime ('%d/%m/%Y', call_date, 'unixepoch') AS call_date,
-                        update_user
+                        (select max(user_name) from user where id=goi_ra.update_user) update_user
                     from  goi_ra
                     where xe_id=?
                     order by call_date`,

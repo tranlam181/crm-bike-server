@@ -8,6 +8,7 @@ const tokenUtil = require('../utils/token-util');
 //test phan quyen kiem tra quyen, lay quyen
 const categoryHandler = require("../handlers/crm-hieu-nga/category-handler").Handler;
 const customerHanlder = require("../handlers/crm-hieu-nga/customer-handler").Handler;
+const smsHanlder = require("../handlers/crm-hieu-nga/sms-handler").Handler;
 
 router.get('/category/provinces'
     , categoryHandler.getProvinces
@@ -151,5 +152,8 @@ router.get('/export-customers'
 router.get('/bikes/:xe_id'
     , tokenUtil.checkToken
     , customerHanlder.getBike
+);
+router.get('/sms-configs'
+    , smsHanlder.getSmsConfig
 );
 module.exports = router;
