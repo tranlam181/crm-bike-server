@@ -2,6 +2,19 @@ const express = require('express');
 const app = express();
 const fs = require('fs');
 const os = require('os');
+const cron = require('cron')
+const smsHandler = require('./handlers/crm-hieu-nga/sms-handler').Handler
+
+const job = new cron.CronJob({
+  cronTime: `01 * * * * *`,
+  onTick: function() {
+    // thuc hien sms
+    smsHandler.sendSmsJob()
+    console.log('Cron job runing...', new Date().toLocaleTimeString());
+  },
+  start: true,
+  timeZone: 'Asia/Ho_Chi_Minh'
+});
 
 function main(isHttp, isHttps) {
   //web tinh
@@ -38,12 +51,15 @@ function main(isHttp, isHttps) {
     // For http
     const httpServer = require('http').createServer(app);
     const portHttp = process.env.PORT || isHttp;
+
     httpServer.listen(portHttp, () => {
       console.log("Server HTTP (" + os.platform() + "; " + os.arch() + ") is started with PORT: "
         + portHttp
         + "\n tempdir: " + os.tmpdir()
-        + "\n " + new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+        + "\n " + new Date().toLocaleString()
       );
+
+      job.start()
     });
 
   }
@@ -81,15 +97,16 @@ function main(isHttp, isHttps) {
        ].join(':')
     };
     const portHttps = process.env.PORT || isHttps;
-
     const httpsServer = require('https').createServer(credentials, app);
 
     httpsServer.listen(portHttps, () => {
       console.log("Server HTTPS (" + os.platform() + "; " + os.arch() + ") is started with PORT: "
         + portHttps
         + "\n tempdir: " + os.tmpdir()
-        + "\n " + new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+        + "\n " + new Date().toLocaleString()
       );
+
+      job.start()
     });
 
   }

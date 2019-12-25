@@ -156,4 +156,14 @@ router.get('/bikes/:xe_id'
 router.get('/sms-configs'
     , smsHanlder.getSmsConfig
 );
+router.put('/sms-configs'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , smsHanlder.saveSmsConfig
+);
+router.post('/send-sms'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , smsHanlder.sendSmsRequest
+);
 module.exports = router;

@@ -31,6 +31,7 @@
     "cheerio": "^1.0.0-rc.2",
     "convert-excel-to-json": "^1.6.1",
     "cordova-common": "^3.2.0",
+    "cron": "^1.7.2",
     "dddos": "^0.1.2",
     "exif-js": "^2.3.0",
     "fix": "0.0.6",
