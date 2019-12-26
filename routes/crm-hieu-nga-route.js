@@ -166,4 +166,7 @@ router.post('/send-sms'
     , postHandler.jsonProcess
     , smsHanlder.sendSmsRequest
 );
+router.get('/test-send-sms-job'
+    , smsHanlder.sendSmsJob
+);
 module.exports = router;

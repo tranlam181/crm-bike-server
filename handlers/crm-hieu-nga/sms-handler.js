@@ -10,19 +10,20 @@ const db = require('../../db/sqlite3/crm-hieu-nga-dao')
 const jwtConfig = require('../../jwt/jwt-config')
 const jwt = require('jsonwebtoken')
 const request = require('request')
+const {removeVietnameseFromString} = require('../../utils/utils')
 
-var sendSms = (ipphone, number, content, secret_key, url_api) => {
+var sendSms = (ipphone, number, content) => {
     return new Promise((resol, reject) => {
         let data = {
           "ipphone": ipphone,
           "number": number,
           "content": content
         }
-        const token = jwt.sign(data, secret_key, {
+        const token = jwt.sign(data, jwtConfig.secret3C, {
           expiresIn: 1*86400 // sec ~ 1day
         })
 
-        request.post(url_api,
+        request.post(jwtConfig.baseUrlSms3C,
           {
             json: {
               token: token
@@ -87,7 +88,7 @@ class Handler {
     sendSmsRequest(req, res, next) {
         let sms = req.json_data
 
-        sendSms(sms.ipphone, sms.numer, sms.content, jwtConfig.secret3C, jwtConfig.baseUrlSms3C)
+        sendSms(sms.ipphone, sms.numer, sms.content)
         .then(result => {
             let sql = `INSERT INTO sms_history`
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -99,44 +100,102 @@ class Handler {
     }
 
     async sendSmsJob() {
-      console.log('zo db roi');
-      // 1. Query cac rows co thoi gian nhan tin vao thoi diem job chay
+      // 1. Query cac sms config co thoi gian nhan tin vao thoi diem job chay
+      console.log('sendSmsJob');
       let hour = Number(new Date().getHours())
       let sql = `SELECT * FROM sms_config WHERE sms_hour = ?`
       let params = [hour]
+      let sms_configs = await db.getRsts(sql, params)
+      let sms_targets
+      let content
 
-      let rows = await db.getRsts(sql, params)
-      // 2. Voi moi row, query cac xe trung thoi diem nhan tin
+      try {
+        // 2. Voi moi config, query cac xe trung thoi diem nhan tin
+        console.log(sms_configs);
+        for (let config of sms_configs) {
+          sql = `SELECT   a.id AS xe_id,
+                        a.khach_hang_id,
+                        b.phone,
+                        b.full_name_no_sign AS ho_ten,
+                        c.name AS loai_xe,
+                        d.address AS ten_head
+                    FROM   xe a,
+                          khach_hang b,
+                          dm_loai_xe c,
+                          dm_cua_hang d`
+                          // date (a.buy_date, 'unixepoch', '+${config.n_day_after} day') = date ('now')
+                          // AND
+          if (config.type == 'SMS KTDK' || config.type == 'SMS BDTB' || config.type == 'SMS MUA XE') {
+            sql += ` WHERE        a.khach_hang_id = b.id
+                          AND a.loai_xe_id = c.id
+                          AND a.cua_hang_id = d.id
+                          LIMIT 2`
+            params = []
 
-      sql = `SELECT   b.phone, b.full_name_no_sign, c.name, d.address
-                  FROM   xe a,
-                        khach_hang b,
-                        dm_loai_xe c,
-                        dm_cua_hang d`
+            sms_targets = await db.getRsts(sql, params).catch(err => console.error('err SMS KTDK', err))
+            // date (b.birthday, 'unixepoch', '+${config.n_day_after} day') = date ('now')
+            // AND
+          } else if (config.type == 'SMS SINH NHAT') {
+            sql += ` WHERE        a.khach_hang_id = b.id
+                          AND a.loai_xe_id = c.id
+                          AND a.cua_hang_id = d.id LIMIT 2`
+            params = []
 
-      for (let row of rows) {
-        if (row.type == 'SMS KTDK' || row.type == 'SMS BDTB' || row.type == 'SMS MUA XE') {
-          sql += ` WHERE       date (a.buy_date, 'unixepoch', '+? day') = date ('now')
-                        AND a.khach_hang_id = b.id
-                        AND a.loai_xe_id = c.id
-                        AND a.cua_hang_id = d.id`
-          params = [row.n_day_after]
+            sms_targets = await db.getRsts(sql, params).catch(err => console.error('err SMS SINH NHAT', err))
+            // date (a.last_service_date, 'unixepoch', '+${config.n_day_after} day') = date ('now')
+            // AND
+          } else if (config.type == 'SMS SAU 6 THANG DICH VU') {
+            sql += ` WHERE        a.khach_hang_id = b.id
+                          AND a.loai_xe_id = c.id
+                          AND a.cua_hang_id = d.id LIMIT 2`
+            params = []
 
-        } else if (row.type == 'SMS SINH NHAT') {
-          sql = ` WHERE       date (b.birthday, 'unixepoch', '+? day') = date ('now')
-                        AND a.khach_hang_id = b.id
-                        AND a.loai_xe_id = c.id
-                        AND a.cua_hang_id = d.id`
-          params = [row.n_day_after]
-        } else if (row.type == 'SMS SAU 6 THANG DICH VU') {
-          sql = ` WHERE       date (a.last_service_date, 'unixepoch', '+? day') = date ('now')
-                        AND a.khach_hang_id = b.id
-                        AND a.loai_xe_id = c.id
-                        AND a.cua_hang_id = d.id`
-          params = [row.n_day_after]
+            sms_targets = await db.getRsts(sql, params).catch(err => console.error('err SMS SAU 6 THANG DICH VU', err))
+          }
+
+          // 3. Thuc hien nhan tin, luu vao bang history de theo doi, bao cao
+          console.log(sms_targets);
+
+          for (let target of sms_targets) {
+            // sendSms(jwtConfig.ipphoneSms3C, target.phone, config.content)
+
+            content = config.content
+                        .replace("{{ho_ten}}", target.ho_ten)
+                        .replace("{{loai_xe}}", removeVietnameseFromString(target.loai_xe))
+                        .replace("{{ten_head}}", target.ten_head)
+
+            sql = `INSERT INTO sms_history
+                    (
+                        xe_id,
+                        khach_hang_id,
+                        type,
+                        type_detail,
+                        content,
+                        sms_datetime
+                    )
+                    VALUES
+                    (
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        strftime('%s', datetime('now', 'localtime'))
+                    )`
+            params = [
+              target.xe_id,
+              target.khach_hang_id,
+              config.type,
+              config.type_detail,
+              content,
+            ]
+
+            db.runSql(sql, params)
+          }
         }
+      } catch(err) {
+        console.log('err', err)
       }
-      // 3. Thuc hien nhan tin, luu vao bang history de theo doi, bao cao
     }
 }
 

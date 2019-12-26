@@ -72,6 +72,10 @@ class Handler {
                     expiresIn: jwtConfig.tokenLife
                 })
 
+                sql = `UPDATE user SET last_login_datetime = strftime('%s', datetime('now', 'localtime')) WHERE id=?`
+                params = [userDB.id]
+                db.getRst(sql, params)
+
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:`User ${user.user_name} login thành công`, token: token, user: userDB}))
                 return

@@ -12,7 +12,7 @@ const job = new cron.CronJob({
     smsHandler.sendSmsJob()
     console.log('Cron job runing...', new Date().toLocaleTimeString());
   },
-  start: true,
+  start: false,
   timeZone: 'Asia/Ho_Chi_Minh'
 });
 
@@ -58,10 +58,7 @@ function main(isHttp, isHttps) {
         + "\n tempdir: " + os.tmpdir()
         + "\n " + new Date().toLocaleString()
       );
-
-      job.start()
     });
-
   }
 
   if (isHttps) {
@@ -105,12 +102,10 @@ function main(isHttp, isHttps) {
         + "\n tempdir: " + os.tmpdir()
         + "\n " + new Date().toLocaleString()
       );
-
-      job.start()
     });
-
   }
 
+  // job.start()
 }
 
 const isHttps = false
