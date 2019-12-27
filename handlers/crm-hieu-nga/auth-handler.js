@@ -43,11 +43,13 @@ class Handler {
         user.user_name = user.user_name.toUpperCase().trim()
         user.password = user.password.trim()
         let sql = `SELECT id,
+                        nhom_id,
                         user_name,
                         password,
                         cua_hang_id,
                         (SELECT MAX(name) FROM dm_cua_hang WHERE id=user.cua_hang_id) AS shop_name,
-                        link_3c
+                        link_3c,
+                        ipphone
                     FROM user
                     WHERE user_name = ?`
         let params = [user.user_name]
@@ -91,34 +93,60 @@ class Handler {
         res.status(200).end(JSON.stringify({status:'OK', msg:`User ${req.user.user_name} logout thành công`}))
     }
 
-    async getLink3c(req, res, next) {
-        let sql = `SELECT id, link_3c FROM user WHERE id = ?`
-        let params = [req.userInfo.id]
-
-        let userDB = await db.getRst(sql, params)
-
-        if (!userDB || !userDB.id) {
-            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'NOK', msg:`User ${req.userInfo.id} không tồn tại`}))
-            return
-        }
-
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify({status:'OK', link_3c: userDB.link_3c}))
-    }
-
-    async saveLink3c(req, res, next) {
-        let data = req.json_data
-
-        let sql = `UPDATE user SET link_3c=? WHERE id = ?`
-        let params = [data.link_3c, req.userInfo.id]
-
-        db.runSql(sql, params).then(result => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'Cập nhật link 3c thành công'}))
+    getUsers(req, res, next) {
+        db.getRsts(`SELECT id, user_name, ipphone
+            FROM user
+            ORDER BY nhom_id, id`
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        })
+        });
+    }
+
+    async saveUsers(req, res, next) {
+        let users = req.json_data
+        let sql = ''
+        let params = []
+        let payload
+        let token
+
+        try {
+            for (let user of users) {
+                // generate token to call 3C
+                sql = `SELECT (SELECT value FROM app_config WHERE id=4) AS link_call_3c,(SELECT value FROM app_config WHERE id=2) AS secret_3c`
+                params = []
+                let config = await db.getRst(sql, params)
+
+                payload = {
+                    "ipphone": user.ipphone,
+                }
+                token = jwt.sign(payload, config.secret_3c, {})
+
+                sql = `UPDATE user
+                        SET
+                            link_3c = ?,
+                            ipphone = ?,
+                            update_user = ?,
+                            update_datetime = strftime('%s', datetime('now', 'localtime'))
+                        WHERE
+                            id = ?`
+                params = [
+                    `${config.link_call_3c}?token=${token}&number=`,
+                    user.ipphone,
+                    req.userInfo.id,
+                    user.id,
+                ]
+
+                await db.runSql(sql, params)
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Lưu cấu hình thành công'}))
+        } catch(err) {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        }
     }
 }
 

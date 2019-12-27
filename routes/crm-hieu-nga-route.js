@@ -8,7 +8,9 @@ const tokenUtil = require('../utils/token-util');
 //test phan quyen kiem tra quyen, lay quyen
 const categoryHandler = require("../handlers/crm-hieu-nga/category-handler").Handler;
 const customerHanlder = require("../handlers/crm-hieu-nga/customer-handler").Handler;
+const reportHanlder = require("../handlers/crm-hieu-nga/report-handler").Handler;
 const smsHanlder = require("../handlers/crm-hieu-nga/sms-handler").Handler;
+const appConfigHanlder = require("../handlers/crm-hieu-nga/app-config-handler").Handler;
 
 router.get('/category/provinces'
     , categoryHandler.getProvinces
@@ -131,23 +133,23 @@ router.get('/services/:dich_vu_id'
 );
 router.get('/report-callouts'
     , tokenUtil.checkToken
-    , customerHanlder.reportCallout
+    , reportHanlder.reportCallout
 );
 router.get('/report-maintances'
     , tokenUtil.checkToken
-    , customerHanlder.reportMaintance
+    , reportHanlder.reportMaintance
 );
 router.get('/report-after-buys'
     , tokenUtil.checkToken
-    , customerHanlder.reportAfterBuy
+    , reportHanlder.reportAfterBuy
 );
 router.get('/report-after-maintances'
     , tokenUtil.checkToken
-    , customerHanlder.reportAfterMaintance
+    , reportHanlder.reportAfterMaintance
 );
 router.get('/export-customers'
     , tokenUtil.checkToken
-    , customerHanlder.exportCustomer
+    , reportHanlder.exportCustomer
 );
 router.get('/bikes/:xe_id'
     , tokenUtil.checkToken
@@ -160,6 +162,14 @@ router.put('/sms-configs'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
     , smsHanlder.saveSmsConfig
+);
+router.get('/app-configs'
+    , appConfigHanlder.getAppConfig
+);
+router.put('/app-configs'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , appConfigHanlder.saveAppConfig
 );
 router.post('/send-sms'
     , tokenUtil.checkToken

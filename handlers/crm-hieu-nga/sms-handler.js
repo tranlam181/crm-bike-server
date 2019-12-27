@@ -7,23 +7,22 @@
  *
  */
 const db = require('../../db/sqlite3/crm-hieu-nga-dao')
-const jwtConfig = require('../../jwt/jwt-config')
 const jwt = require('jsonwebtoken')
 const request = require('request')
 const {removeVietnameseFromString} = require('../../utils/utils')
 
-var sendSms = (ipphone, number, content) => {
+var sendSms = (ipphone, number, content, link_sms_3c, secret_3c) => {
     return new Promise((resol, reject) => {
         let data = {
           "ipphone": ipphone,
           "number": number,
           "content": content
         }
-        const token = jwt.sign(data, jwtConfig.secret3C, {
+        const token = jwt.sign(data, config.secret_3c, {
           expiresIn: 1*86400 // sec ~ 1day
         })
 
-        request.post(jwtConfig.baseUrlSms3C,
+        request.post(config.link_sms_3c,
           {
             json: {
               token: token
@@ -85,10 +84,13 @@ class Handler {
         res.end(JSON.stringify({status:'OK', msg:'Lưu cấu hình thành công'}))
     }
 
-    sendSmsRequest(req, res, next) {
+    async sendSmsRequest(req, res, next) {
         let sms = req.json_data
+        let sql = `SELECT (SELECT value FROM app_config WHERE id=3) AS link_sms_3c,(SELECT value FROM app_config WHERE id=2) AS secret_3c`
+        let params = []
+        let config = await db.getRst(sql, params)
 
-        sendSms(sms.ipphone, sms.numer, sms.content)
+        sendSms(sms.ipphone, sms.numer, sms.content, config.link_sms_3c, config.secret_3c)
         .then(result => {
             let sql = `INSERT INTO sms_history`
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -111,7 +113,6 @@ class Handler {
 
       try {
         // 2. Voi moi config, query cac xe trung thoi diem nhan tin
-        console.log(sms_configs);
         for (let config of sms_configs) {
           sql = `SELECT   a.id AS xe_id,
                         a.khach_hang_id,
@@ -154,8 +155,6 @@ class Handler {
           }
 
           // 3. Thuc hien nhan tin, luu vao bang history de theo doi, bao cao
-          console.log(sms_targets);
-
           for (let target of sms_targets) {
             // sendSms(jwtConfig.ipphoneSms3C, target.phone, config.content)
 
