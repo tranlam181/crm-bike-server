@@ -135,9 +135,9 @@ router.get('/report-callouts'
     , tokenUtil.checkToken
     , reportHanlder.reportCallout
 );
-router.get('/report-maintances'
+router.get('/report-sms'
     , tokenUtil.checkToken
-    , reportHanlder.reportMaintance
+    , reportHanlder.reportSms
 );
 router.get('/report-after-buys'
     , tokenUtil.checkToken

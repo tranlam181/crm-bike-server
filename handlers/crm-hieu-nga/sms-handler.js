@@ -18,11 +18,11 @@ var sendSms = (ipphone, number, content, link_sms_3c, secret_3c) => {
           "number": number,
           "content": content
         }
-        const token = jwt.sign(data, config.secret_3c, {
+        const token = jwt.sign(data, secret_3c, {
           expiresIn: 1*86400 // sec ~ 1day
         })
 
-        request.post(config.link_sms_3c,
+        request.post(link_sms_3c,
           {
             json: {
               token: token
@@ -84,20 +84,19 @@ class Handler {
         res.end(JSON.stringify({status:'OK', msg:'Lưu cấu hình thành công'}))
     }
 
-    async sendSmsRequest(req, res, next) {
+    sendSmsRequest(req, res, next) {
         let sms = req.json_data
         let sql = `SELECT (SELECT value FROM app_config WHERE id=3) AS link_sms_3c,(SELECT value FROM app_config WHERE id=2) AS secret_3c`
         let params = []
-        let config = await db.getRst(sql, params)
 
-        sendSms(sms.ipphone, sms.numer, sms.content, config.link_sms_3c, config.secret_3c)
-        .then(result => {
-            let sql = `INSERT INTO sms_history`
+        db.getRst(sql, params).then(config => {
+          return sendSms(sms.ipphone, sms.numer, sms.content, config.link_sms_3c, config.secret_3c).then(rs => {
+            sql = `INSERT INTO sms_history`
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
             res.end(JSON.stringify({status:'OK', msg: result.msg}))
+          })
         }).catch(err => {
-            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'NOK', msg: err.msg}))
+          res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
 
@@ -116,6 +115,7 @@ class Handler {
         for (let config of sms_configs) {
           sql = `SELECT   a.id AS xe_id,
                         a.khach_hang_id,
+                        a.cua_hang_id,
                         b.phone,
                         b.full_name_no_sign AS ho_ten,
                         c.name AS loai_xe,
@@ -167,6 +167,7 @@ class Handler {
                     (
                         xe_id,
                         khach_hang_id,
+                        cua_hang_id,
                         type,
                         type_detail,
                         content,
@@ -179,11 +180,13 @@ class Handler {
                         ?,
                         ?,
                         ?,
+                        ?,
                         strftime('%s', datetime('now', 'localtime'))
                     )`
             params = [
               target.xe_id,
               target.khach_hang_id,
+              target.cua_hang_id,
               config.type,
               config.type_detail,
               content,

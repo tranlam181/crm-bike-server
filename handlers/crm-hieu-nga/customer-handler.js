@@ -10,81 +10,6 @@ const db = require('../../db/sqlite3/crm-hieu-nga-dao')
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../../utils/utils')
 const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN"
 
-var _updateBaoDuongSum = (bao_duong_id) => {
-    let sql = `SELECT   SUM (CASE WHEN a.loai_bao_duong_id = 276 THEN price ELSE 0 END) AS price_wage,
-                SUM (CASE WHEN a.loai_bao_duong_id <> 276 THEN price ELSE 0 END) AS price_equip,
-                group_concat ( (CASE WHEN a.loai_bao_duong_id <> 276 THEN b.name ELSE NULL END)) AS maintance_detail
-            FROM   bao_duong_chi_phi a, dm_loai_bao_duong b
-            WHERE   a.bao_duong_id = ? AND a.loai_bao_duong_id = b.id
-            GROUP BY   a.bao_duong_id`
-
-    db.getRst(sql, [bao_duong_id]).then(data => {
-        sql = `UPDATE   bao_duong
-                SET   price_wage = ?, price_equip = ?, maintance_detail = ?
-                WHERE   id = ?`
-        let params = [data.price_wage, data.price_equip, data.maintance_detail, bao_duong_id]
-
-        return db.runSql(sql, params)
-    })
-}
-
-var _importBaoDuong = (maintance, userInfo) => {
-    let total_price = maintance.details.reduce((result, e, idx) => {
-        result += Number(e.price)
-        return result
-    }, 0)
-    let sql = `INSERT INTO bao_duong (khach_hang_xe_id,
-                cua_hang_id,
-                kieu_bao_duong_id,
-                maintance_date,
-                total_price,
-                update_user,
-                create_datetime )
-            VALUES (?,
-                ?,
-                ?,
-                strftime('%s', ?),
-                ?,
-                ?,
-                strftime('%s', datetime('now', 'localtime'))
-            )`
-    let params = [
-        maintance.khach_hang_xe_id,
-        maintance.shop_id,
-        maintance.kieu_bao_duong_id,
-        maintance.maintance_date,
-        total_price,
-        userInfo.id
-    ]
-
-    db.runSql(sql, params).then(bao_duong_res => {
-        sql = `UPDATE khach_hang
-                SET bao_duong_id = ?, last_maintance_date = strftime('%s', ?)
-                WHERE id=?`
-        params = [bao_duong_res.lastID, maintance.maintance_date, maintance.khach_hang_id]
-        db.runSql(sql, params)
-
-        // cap nhat id lan cuoi bao duong vao khach_hang_xe -> muc dich de bao cao cho nhanh
-        sql = ` UPDATE khach_hang_xe
-            SET bao_duong_id = ?
-            WHERE id=?`
-        params = [bao_duong_res.lastID, maintance.khach_hang_xe_id]
-        db.runSql(sql, params)
-
-        let placeholder = maintance.details.map((bao_duong, index) => '(?,?,?)').join(',')
-        sql = 'INSERT INTO bao_duong_chi_phi (bao_duong_id, loai_bao_duong_id, price) VALUES ' + placeholder
-
-        params = maintance.details.reduce((result, e, idx) => {
-            result = [...result, bao_duong_res.lastID, e.loai_bao_duong.id, e.price]
-            return result
-        }, [])
-
-        return db.runSql(sql, params).then(data => {
-            _updateBaoDuongSum(bao_duong_res.lastID)
-        })
-    })
-}
-
 class Handler {
     addCustomer(req, res, next) {
         let customer = req.json_data
@@ -99,13 +24,14 @@ class Handler {
         let sql = `SELECT MAX(id) as khach_hang_id, COUNT(1) AS count
                     FROM khach_hang
                     WHERE phone=?`
+        let params = []
 
         db.getRst(sql, [customer.phone]).then(async (row) => {
             if (row.count > 0) { // ton tai roi thi khong can them moi Khach hang
                 return {khach_hang_id: row.khach_hang_id}
             } else { // chua ton tai thi them moi Khach hang, dong thoi them moi du lieu xe
                 // Them moi Khach hang
-                let sql = `INSERT INTO khach_hang
+                sql = `INSERT INTO khach_hang
                         (
                             full_name,
                             phone,
@@ -151,69 +77,104 @@ class Handler {
                 return result.hasOwnProperty('lastID') ? {khach_hang_id: result.lastID} : Promise.reject(result)
             }
         })
-        .then(customerInfo => {
+        .then(async (customerInfo) => {
             // them du lieu xe
-            let sql = `INSERT INTO xe
-                (
-                    cua_hang_id,
-                    khach_hang_id,
-                    loai_xe_id,
-                    mau_xe_id,
-                    frame_number,
-                    engine_number,
-                    bike_number,
-                    buy_date,
-                    warranty_number
-                )
-                VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    strftime('%s',?),
-                    ?
-                ) ON CONFLICT(khach_hang_id, loai_xe_id, frame_number) DO UPDATE SET update_user=?, update_datetime = strftime('%s', datetime('now', 'localtime'))`
-            let params = [
-                customer.cua_hang_id,
-                customerInfo.khach_hang_id,
-                customer.loai_xe_id,
-                customer.mau_xe_id,
-                customer.frame_number,
-                customer.engine_number,
-                customer.bike_number,
-                customer.buy_date,
-                customer.warranty_number,
-                req.userInfo.id
-            ]
-            if (customer.loai_xe_id) {
-                return db.runSql(sql, params).then(result => {
-                    // ton tai loai hinh bao duong thi thuc hien insert cac bang ghi lien quan
-                    // if (customer.loai_bao_duong_id) {
-                    //     let maintance = {
-                    //         khach_hang_id: customerInfo.khach_hang_id,
-                    //         khach_hang_xe_id: result.lastID,
-                    //         kieu_bao_duong_id: customer.kieu_bao_duong_id,
-                    //         shop_id: customer.shop_id,
-                    //         maintance_date: customer.last_visit_date,
-                    //         details: [
-                    //             {loai_bao_duong:{id: 266}, price:customer.price_equip},
-                    //             {loai_bao_duong:{id: 276}, price:customer.price}
-                    //         ]
-                    //     }
-                    //     _importBaoDuong(maintance, req.userInfo)
-                    // }
+            // kiem tra ton tai xe
+            let check_xe = await db.getRst(
+                `SELECT COUNT(1) AS count_ FROM xe WHERE khach_hang_id=? AND loai_xe_id=? AND frame_number=?`,
+                [customerInfo.khach_hang_id, customer.loai_xe_id, customer.frame_number,]
+            )
+
+            if (check_xe.count_ <= 0 && customer.loai_xe_id) {
+                sql = `INSERT INTO xe
+                    (
+                        cua_hang_id,
+                        khach_hang_id,
+                        loai_xe_id,
+                        mau_xe_id,
+                        frame_number,
+                        engine_number,
+                        bike_number,
+                        buy_date,
+                        warranty_number,
+                        update_user
+                    )
+                    VALUES
+                    (
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        strftime('%s',?),
+                        ?,
+                        ?
+                    )`
+                params = [
+                    customer.cua_hang_id,
+                    customerInfo.khach_hang_id,
+                    customer.loai_xe_id,
+                    customer.mau_xe_id,
+                    customer.frame_number,
+                    customer.engine_number,
+                    customer.bike_number,
+                    customer.buy_date,
+                    customer.warranty_number,
+                    req.userInfo.id
+                ]
+
+                return db.runSql(sql, params).then(xe_result => {
+                    // Neu xe la moi, va co' loai bao duong
+                    // Thi thuc hien them moi bao duong
+                    if (xe_result.lastID > 0 && customer.loai_bao_duong_id > 0) {
+                        sql = `INSERT INTO dich_vu
+                                (
+                                    khach_hang_id,
+                                    cua_hang_id,
+                                    loai_bao_duong_id,
+                                    xe_id,
+                                    service_date,
+                                    equips,
+                                    price_wage,
+                                    total_price,
+                                    note
+                                )
+                                VALUES
+                                (
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    strftime('%s', ?),
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?
+                                )`
+                        params = [
+                            customerInfo.khach_hang_id,
+                            customer.cua_hang_id,
+                            customer.loai_bao_duong_id,
+                            xe_result.lastID,
+                            customer.service_date,
+                            JSON.stringify({"name":"PHỤ TÙNG","price":Number(customer.price_equip)}),
+                            customer.price,
+                            Number(customer.price) + Number(customer.price_equip),
+                            'import excel'
+                        ]
+
+                        db.runSql(sql, params)
+                    }
 
                     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                    res.end(JSON.stringify({status:'OK', msg:'Thêm xe thành công', count:result.changes, khach_hang_id:customerInfo.khach_hang_id}))
+                    res.end(JSON.stringify({status:'OK', msg:'Thêm xe thành công', khach_hang_id: customerInfo.khach_hang_id}))
                 })
-            } else {
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Thêm xe thành công', khach_hang_id:customerInfo.khach_hang_id}))
             }
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Thêm xe thành công', khach_hang_id: customerInfo.khach_hang_id}))
         })
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
@@ -274,12 +235,13 @@ class Handler {
                 b.address`
 
         switch (filter) {
-            // AND a.buy_date <= strftime ('%s', date('now', '-10 day'))
-            //             AND a.buy_date >= strftime ('%s', date('now', '-30 day'))
+
             case 'after10BuyDate':
                 sql += ` FROM xe a , khach_hang b
                     WHERE a.y_kien_mua_xe_id IS NULL
                         AND (? IS NULL OR a.cua_hang_id=?)
+                        AND a.buy_date <= strftime ('%s', date('now', '-10 day'))
+                        AND a.buy_date >= strftime ('%s', date('now', '-30 day'))
                         AND a.khach_hang_id=b.id
                     ORDER BY a.buy_date
                     LIMIT 30`
@@ -287,9 +249,6 @@ class Handler {
                 break;
 
             case 'afterMaintanceDate':
-                //     AND (  c.service_date <= strftime ('%s', date('now', '-7 day'))
-                //     AND c.service_date >= strftime ('%s', date('now', '-17 day'))
-                // )
                 sql += `    ,c.id AS dich_vu_id
                             ,strftime ('%d/%m/%Y', c.service_date, 'unixepoch') AS service_date
                             ,(select max(name) from dm_loai_bao_duong where id=c.loai_bao_duong_id) loai_bao_duong
@@ -298,6 +257,8 @@ class Handler {
                         FROM xe a, khach_hang b, dich_vu c
                         WHERE a.khach_hang_id=b.id
                             AND a.id=c.xe_id
+                            AND c.service_date <= strftime ('%s', date('now', '-7 day'))
+                            AND c.service_date >= strftime ('%s', date('now', '-17 day'))
                             AND c.y_kien_dich_vu_id IS NULL
                             AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY c.service_date
@@ -306,12 +267,11 @@ class Handler {
                 break;
 
             case 'ktdk6':
-                    // a.buy_date >= strftime ('%s', date('now', '-1000 day'))
-                    // AND a.buy_date < strftime ('%s', date('now', '-998 day'))
-                    // AND
                 sql += ` , strftime('%d/%m/%Y', date(a.buy_date, 'unixepoch', '+1000 day')) AS invite_date
                     FROM xe a , khach_hang b
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
+                        AND a.buy_date >= strftime ('%s', date('now', '-1000 day'))
+                        AND a.buy_date < strftime ('%s', date('now', '-998 day'))
                         AND (a.last_service_date IS NULL OR a.last_service_date < strftime('%s', date(a.buy_date, 'unixepoch', '+1000 day')))
                         AND a.khach_hang_id=b.id
                     ORDER BY a.buy_date
@@ -320,12 +280,11 @@ class Handler {
                 break;
 
             case 'ktdk7':
-                    // a.buy_date >= strftime ('%s', date('now', '-1185 day'))
-                    // AND a.buy_date < strftime ('%s', date('now', '-1183 day'))
-                    // AND
                 sql += ` , strftime('%d/%m/%Y', date(a.buy_date, 'unixepoch', '+1185 day')) AS invite_date
                     FROM xe a , khach_hang b
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
+                        AND a.buy_date >= strftime ('%s', date('now', '-1185 day'))
+                        AND a.buy_date < strftime ('%s', date('now', '-1183 day'))
                         AND (a.last_service_date IS NULL OR a.last_service_date < strftime('%s', date(a.buy_date, 'unixepoch', '+1185 day')))
                         AND a.khach_hang_id=b.id
                     ORDER BY a.buy_date
