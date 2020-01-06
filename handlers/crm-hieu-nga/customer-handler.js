@@ -183,7 +183,6 @@ class Handler {
 
     async delCustomer(req, res, next) {
         let khach_hang_id = req.params.khach_hang_id
-
         //sqlite ON DELETE CASCADE khong hoat dong khi call tu nodejs?
         //chua hieu vi sao, nen bay gio phai delete thu cong
         let sql = `DELETE FROM dich_vu WHERE khach_hang_id=?`
@@ -205,17 +204,19 @@ class Handler {
 
     getCustomers(req, res, next) {
         let filter = req.query.filter // birthday|coming loc danh sach gi
-        let s = req.query.s ? removeVietnameseFromString(req.query.s) : null // chuoi tim kiem neu co
+        let full_name = req.query.full_name ? removeVietnameseFromString(req.query.full_name) : null // chuoi tim kiem neu co
+        let phone = req.query.phone ? req.query.phone : null // chuoi tim kiem neu co
+        let bike_number = req.query.bike_number ? req.query.bike_number : null // chuoi tim kiem neu co
+        let frame_number = req.query.frame_number ? req.query.frame_number : null // chuoi tim kiem neu co
+        let engine_number = req.query.engine_number ? req.query.engine_number : null // chuoi tim kiem neu co
         let sql = ''
         let params = []
         let userInfo = req.userInfo
 
-        if (!s || s=='undefined') s = ''
-
         sql = `SELECT
                 a.id as xe_id,
                 a.khach_hang_id,
-                (SELECT MAX(name) FROM dm_cua_hang where id=a.cua_hang_id) AS shop_name,
+                (SELECT MAX(short_name) FROM dm_cua_hang where id=a.cua_hang_id) AS shop_name,
                 a.loai_xe_id,
                 (SELECT MAX(name) FROM dm_loai_xe where id=a.loai_xe_id) AS bike_name,
                 a.mau_xe_id,
@@ -321,24 +322,26 @@ class Handler {
                         userInfo.cua_hang_id]
                 break;
 
+            case 'search':
+                    sql += ` FROM xe a , khach_hang b
+                        WHERE
+                            a.khach_hang_id=b.id
+                            AND (ifnull(?,'') = '' OR b.full_name_no_sign LIKE '%' || UPPER(?) || '%')
+                            AND (ifnull(?,'') = '' OR b.phone LIKE '%' || ? || '%')
+                            AND (ifnull(?,'') = '' OR a.bike_number LIKE '%' || UPPER(?) || '%')
+                            AND (ifnull(?,'') = '' OR a.frame_number LIKE '%' || UPPER(?) || '%')
+                            AND (ifnull(?,'') = '' OR a.engine_number LIKE '%' || UPPER(?) || '%')
+                        ORDER BY full_name_no_sign
+                        LIMIT 30`
+                    params = [full_name, full_name,
+                            phone, phone,
+                            bike_number, bike_number,
+                            frame_number, frame_number,
+                            engine_number, engine_number
+                        ]
+                    break;
             default:
-                sql += `,(select max(name) from dm_muc_dich_goi_ra where id=a.last_muc_dich_goi_ra_id) last_muc_dich_goi_ra
-                        ,(select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id AND muc_dich_goi_ra_id=a.last_muc_dich_goi_ra_id) last_ket_qua_goi_ra
-                        ,(select max(name) from dm_loai_bao_duong where id=a.last_loai_bao_duong_id) last_loai_bao_duong
-                        ,strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
-                    FROM xe a , khach_hang b
-                    WHERE
-                        a.khach_hang_id=b.id
-                        AND (
-                            ifnull(?,'') = ''
-                            OR b.phone LIKE '%' || ? || '%'
-                            OR b.full_name_no_sign LIKE '%' || UPPER(?) || '%'
-                            OR a.bike_number LIKE '%' || UPPER(?) || '%'
-                            OR a.warranty_number LIKE '%' || UPPER(?) || '%'
-                        )
-                    ORDER BY full_name_no_sign
-                    LIMIT 30`
-                params = [s, s, s, s, s]
+                sql = `SELECT 1`
         }
 
         db.getRsts(sql, params).then(row => {
