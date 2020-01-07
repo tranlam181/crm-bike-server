@@ -57,6 +57,11 @@ router.get('/category/callout-purposes'
 router.get('/category/staff-attitudes'
     , categoryHandler.getStaffAttitude
 );
+router.post('/import-customer'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , customerHanlder.importCustomer
+);
 router.post('/customers'
     , tokenUtil.checkToken
     , postHandler.jsonProcess

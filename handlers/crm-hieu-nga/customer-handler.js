@@ -10,6 +10,45 @@ const db = require('../../db/sqlite3/crm-hieu-nga-dao')
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../../utils/utils')
 const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN"
 
+/**
+ * @categoryName: ten danh muc
+ * @data: du lieu cua danh muc do, vd {code:xx, name:'xy}
+ */
+function updateCategory(categoryName, data) {
+    let sql
+    let params
+
+    switch (categoryName) {
+        case 'dm_loai_xe':
+            if (!data.code || !data.name) return
+            sql = `INSERT OR IGNORE INTO dm_loai_xe (code, name) VALUES (?,?)`
+            params = [data.code, data.name]
+            break;
+        case 'dm_mau_xe':
+            if (!data.name) return
+            sql = `INSERT OR IGNORE INTO dm_mau_xe (name) VALUES (?)`
+            params = [data.name]
+            break;
+        case 'dm_quan_huyen':
+            if (!data.province || !data.district) return
+            sql = `INSERT OR IGNORE INTO dm_quan_huyen (province, district) VALUES (?,?)`
+            params = [data.province, data.district]
+            break;
+        case 'dm_nghe_nghiep':
+            if (!data.name) return
+            sql = `INSERT OR IGNORE INTO dm_nghe_nghiep (name) VALUES (?)`
+            params = [data.name]
+            break;
+        case 'dm_tinh_trang_xe':
+            if (!data.name) return
+            sql = `INSERT OR IGNORE INTO dm_ket_qua_goi_ra (muc_dich_goi_ra_id, name) VALUES (3, ?)`
+            params = [data.name]
+            break;
+    }
+
+    db.runSql(sql, params).catch(err => {})
+}
+
 class Handler {
     addCustomer(req, res, next) {
         let customer = req.json_data
@@ -179,6 +218,26 @@ class Handler {
         .catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
+    }
+
+    importCustomer(req, res, next) {
+        let customer = req.json_data
+        // console.log(customer);
+        // Xu ly danh muc ma, loai xe, ten xe
+        updateCategory('dm_loai_xe', {code: customer.bike_code, name: customer.bike_name})
+        // Xu ly danh muc mau xe
+        updateCategory('dm_mau_xe', {name: customer.bike_color})
+        // Xu ly danh muc quan,tp
+        updateCategory('dm_quan_huyen', {province: customer.province, district: customer.district})
+        // Xu ly nghe nghiep
+        updateCategory('dm_nghe_nghiep', {name: customer.job})
+        // Xu ly tinh trang xe
+        updateCategory('dm_tinh_trang_xe', {name: customer.y_kien_mua_xe})
+
+
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify({status:'OK', msg:'Thành công'}))
     }
 
     async delCustomer(req, res, next) {
