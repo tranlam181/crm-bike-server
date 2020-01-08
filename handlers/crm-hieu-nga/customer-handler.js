@@ -49,6 +49,118 @@ function updateCategory(categoryName, data) {
     db.runSql(sql, params).catch(err => {})
 }
 
+async function _importCustomer(customer) {
+    try {
+        let sql = `SELECT MAX(id) as khach_hang_id FROM khach_hang WHERE phone=?`
+        let params = [customer.phone]
+        let result = await db.getRst(sql, params)
+
+        if (result.khach_hang_id) {
+            return {khach_hang_id: result.khach_hang_id, status:'NOK', msg: 'Đã tồn tại Khách hàng có số điện thoại ' + customer.phone}
+        }
+
+        sql = `INSERT INTO khach_hang
+                (
+                    full_name,
+                    phone,
+                    phone_2,
+                    birthday,
+                    sex,
+                    nghe_nghiep_id,
+                    quan_huyen_id,
+                    address,
+                    full_name_no_sign
+                )
+                VALUES
+                (
+                    ?,
+                    ?,
+                    ?,
+                    strftime('%s',?),
+                    ?,
+                    (SELECT MAX(id) FROM dm_nghe_nghiep WHERE name=?),
+                    (SELECT MAX(id) FROM dm_quan_huyen WHERE province=? AND district=?),
+                    ?,
+                    ?
+                )`
+        params = [
+            customer.full_name,
+            customer.phone,
+            customer.phone_2,
+            customer.birthday,
+            customer.sex == 'NAM' || customer.sex == 'MALE' ? 1 : 0,
+            customer.job,
+            customer.province,
+            customer.district,
+            customer.address,
+            capitalizeFirstLetter(removeVietnameseFromString(customer.full_name))
+        ]
+
+        result = await db.runSql(sql, params)
+        return result.hasOwnProperty('lastID') ? {khach_hang_id: result.lastID, status:'OK'} : {status:'NOK', msg:'Lỗi khi thêm mới Khách hàng', error: result}
+    } catch (err) {
+        return {status:'NOK', msg:'Lỗi exception khi thêm mới Khách hàng', error: err}
+    }
+}
+
+async function _importBike(bike, khach_hang_id) {
+    try {
+        let sql = `SELECT MAX(id) as xe_id
+                FROM xe
+                WHERE (frame_number IS NOT NULL AND frame_number <> '' AND frame_number=?)
+                 OR (engine_number IS NOT NULL AND engine_number <> '' AND engine_number=?)
+                 OR (bike_number IS NOT NULL AND bike_number <> '' AND bike_number=?)`
+        let params = [bike.frame_number, bike.engine_number, bike.bike_number]
+        let result = await db.getRst(sql, params)
+
+        if (result.xe_id) {
+            return {xe_id: result.xe_id, status:'NOK', msg: 'Đã tồn tại Xe có số khung, số máy, số xe ' + bike.frame_number + ', ' + bike.engine_number + ', ' + bike.bike_number}
+        }
+
+        sql = `INSERT INTO xe
+            (
+                cua_hang_id,
+                khach_hang_id,
+                loai_xe_id,
+                mau_xe_id,
+                frame_number,
+                engine_number,
+                bike_number,
+                buy_date,
+                warranty_number
+            )
+            VALUES
+            (
+                ?,
+                ?,
+                (SELECT MAX(id) FROM dm_loai_xe WHERE code=? AND name=?),
+                (SELECT MAX(id) FROM dm_mau_xe WHERE name=?),
+                ?,
+                ?,
+                ?,
+                strftime('%s',?),
+                ?
+            )`
+        params = [
+            bike.cua_hang_id,
+            khach_hang_id,
+            bike.bike_code,
+            bike.bike_name,
+            bike.bike_color,
+            bike.frame_number,
+            bike.engine_number,
+            bike.bike_number,
+            bike.buy_date,
+            bike.warranty_number
+        ]
+
+        result = await db.runSql(sql, params)
+        return result.hasOwnProperty('lastID') ? {xe_id: result.lastID, status:'OK'} : {status:'NOK', msg:'Lỗi khi thêm mới Xe', error: result}
+    } catch (err) {
+        return {status:'NOK', msg:'Lỗi exception khi thêm mới Xe', error: err}
+    }
+}
+
 class Handler {
     addCustomer(req, res, next) {
         let customer = req.json_data
@@ -220,24 +332,37 @@ class Handler {
         })
     }
 
-    importCustomer(req, res, next) {
+    async importCustomer(req, res, next) {
         let customer = req.json_data
-        // console.log(customer);
-        // Xu ly danh muc ma, loai xe, ten xe
-        updateCategory('dm_loai_xe', {code: customer.bike_code, name: customer.bike_name})
-        // Xu ly danh muc mau xe
-        updateCategory('dm_mau_xe', {name: customer.bike_color})
-        // Xu ly danh muc quan,tp
-        updateCategory('dm_quan_huyen', {province: customer.province, district: customer.district})
-        // Xu ly nghe nghiep
-        updateCategory('dm_nghe_nghiep', {name: customer.job})
-        // Xu ly tinh trang xe
-        updateCategory('dm_tinh_trang_xe', {name: customer.y_kien_mua_xe})
 
+        try {
+            // console.log(customer);
+            // Xu ly danh muc ma, loai xe, ten xe
+            updateCategory('dm_loai_xe', {code: customer.bike_code, name: customer.bike_name})
+            // Xu ly danh muc mau xe
+            updateCategory('dm_mau_xe', {name: customer.bike_color})
+            // Xu ly danh muc quan,tp
+            updateCategory('dm_quan_huyen', {province: customer.province, district: customer.district})
+            // Xu ly nghe nghiep
+            updateCategory('dm_nghe_nghiep', {name: customer.job})
+            // Xu ly tinh trang xe
+            updateCategory('dm_tinh_trang_xe', {name: customer.y_kien_mua_xe})
 
+            // import khach hang
+            let customer_result = await _importCustomer(customer)
+            // import xe
+            let bike_result = await _importBike(customer, customer_result.khach_hang_id)
 
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify({status:'OK', msg:'Thành công'}))
+            if (bike_result.status != 'OK') {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+                res.end(JSON.stringify({status:'NOK', msg: bike_result.msg, err: bike_result}))
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Thành công'}))
+        } catch (err) {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        }
     }
 
     async delCustomer(req, res, next) {
