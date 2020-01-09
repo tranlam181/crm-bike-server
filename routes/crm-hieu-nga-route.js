@@ -62,6 +62,11 @@ router.post('/import-customer'
     , postHandler.jsonProcess
     , customerHanlder.importCustomer
 );
+router.post('/import-customer-service'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , customerHanlder.importCustomerService
+);
 router.post('/customers'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
