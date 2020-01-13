@@ -9,297 +9,7 @@
 const db = require('../../db/sqlite3/crm-hieu-nga-dao')
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../../utils/utils')
 const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN"
-
-/**
- * @categoryName: ten danh muc
- * @data: du lieu cua danh muc do, vd {code:xx, name:'xy}
- */
-function updateCategory(categoryName, data) {
-    let sql
-    let params
-
-    switch (categoryName) {
-        case 'dm_phu_tung':
-            if (!data.name) return
-            let phu_tung_arr = data.name.split(',')
-
-            for (let e of phu_tung_arr) {
-                e = e.trim().toUpperCase()
-                if (e) {
-                    sql = `INSERT OR IGNORE INTO dm_phu_tung (name) VALUES (?)`
-                    params = [e]
-                    db.runSql(sql, params).catch(err => {})
-                }
-            }
-            return
-        case 'dm_tu_van':
-            if (!data.name) return
-            sql = `INSERT OR IGNORE INTO dm_tu_van (name) VALUES (?)`
-            params = [data.name]
-            break;
-        case 'dm_yeu_cau':
-            if (!data.name) return
-            sql = `INSERT OR IGNORE INTO dm_yeu_cau (name) VALUES (?)`
-            params = [data.name]
-            break;
-        case 'dm_nhan_vien':
-            if (!data.name) return
-            sql = `INSERT OR IGNORE INTO dm_nhan_vien (name) VALUES (?)`
-            params = [data.name]
-            break;
-        case 'dm_ma_loai_xe':
-            if (!data.name) return
-            sql = `INSERT OR IGNORE INTO dm_ma_loai_xe (name) VALUES (?)`
-            params = [data.name]
-            break;
-        case 'dm_loai_xe':
-            if (!data.name) return
-            sql = `INSERT OR IGNORE INTO dm_loai_xe (name) VALUES (?)`
-            params = [data.name]
-            break;
-        case 'dm_mau_xe':
-            if (!data.name) return
-            sql = `INSERT OR IGNORE INTO dm_mau_xe (name) VALUES (?)`
-            params = [data.name]
-            break;
-        case 'dm_quan_huyen':
-            if (!data.province || !data.district) return
-            sql = `INSERT OR IGNORE INTO dm_quan_huyen (province, district) VALUES (?,?)`
-            params = [data.province, data.district]
-            break;
-        case 'dm_nghe_nghiep':
-            if (!data.name) return
-            sql = `INSERT OR IGNORE INTO dm_nghe_nghiep (name) VALUES (?)`
-            params = [data.name]
-            break;
-        case 'dm_tinh_trang_xe':
-            if (!data.name) return
-            sql = `INSERT OR IGNORE INTO dm_ket_qua_goi_ra (muc_dich_goi_ra_id, name) VALUES (3, ?)`
-            params = [data.name]
-            break;
-    }
-
-    db.runSql(sql, params).catch(err => {})
-}
-
-async function _importCustomer(customer) {
-    try {
-        if (!customer.phone) {
-            return {status:'NOK', msg: 'Khách hàng không có số điện thoại'}
-        }
-
-        let sql = `SELECT MAX(id) as khach_hang_id FROM khach_hang WHERE phone=?`
-        let params = [customer.phone]
-        let result = await db.getRst(sql, params)
-
-        if (result.khach_hang_id) {
-            return {khach_hang_id: result.khach_hang_id, status:'NOK', msg: 'Đã tồn tại Khách hàng có số điện thoại ' + customer.phone}
-        }
-
-        sql = `INSERT INTO khach_hang
-                (
-                    full_name,
-                    phone,
-                    phone_2,
-                    birthday,
-                    sex,
-                    nghe_nghiep_id,
-                    quan_huyen_id,
-                    address,
-                    full_name_no_sign
-                )
-                VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    strftime('%s',?),
-                    ?,
-                    (SELECT MAX(id) FROM dm_nghe_nghiep WHERE name=?),
-                    (SELECT MAX(id) FROM dm_quan_huyen WHERE province=? AND district=?),
-                    ?,
-                    ?
-                )`
-        params = [
-            customer.full_name,
-            customer.phone,
-            customer.phone_2,
-            customer.birthday,
-            customer.sex == 'NAM' || customer.sex == 'MALE' ? 1 : 0,
-            customer.job,
-            customer.province,
-            customer.district,
-            customer.address,
-            capitalizeFirstLetter(removeVietnameseFromString(customer.full_name))
-        ]
-
-        result = await db.runSql(sql, params)
-        return result.hasOwnProperty('lastID') ? {khach_hang_id: result.lastID, status:'OK'} : {status:'NOK', msg:'Lỗi khi thêm mới Khách hàng', error: result}
-    } catch (err) {
-        return {status:'NOK', msg:'Lỗi exception khi thêm mới Khách hàng', error: err}
-    }
-}
-
-async function _importBike(bike, khach_hang_id) {
-    try {
-        if (!bike.frame_number && !bike.engine_number && !bike.bike_number) {
-            return {status:'NOK', msg: 'Xe thiếu thông tin số khung, máy, biển số'}
-        }
-
-        let sql = `SELECT MAX(id) as xe_id
-                FROM xe
-                WHERE (frame_number IS NOT NULL AND frame_number <> '' AND frame_number=?)
-                 OR (engine_number IS NOT NULL AND engine_number <> '' AND engine_number=?)
-                 OR (bike_number IS NOT NULL AND bike_number <> '' AND bike_number=?)`
-        let params = [bike.frame_number, bike.engine_number, bike.bike_number]
-        let result = await db.getRst(sql, params)
-
-        if (result.xe_id) {
-            return {xe_id: result.xe_id, status:'NOK', msg: 'Đã tồn tại Xe có số khung, số máy, số xe ' + bike.frame_number + ', ' + bike.engine_number + ', ' + bike.bike_number}
-        }
-
-        sql = `INSERT INTO xe
-            (
-                cua_hang_id,
-                khach_hang_id,
-                ma_loai_xe_id,
-                loai_xe_id,
-                mau_xe_id,
-                frame_number,
-                engine_number,
-                bike_number,
-                buy_date,
-                warranty_number,
-                note_1,
-                note_2,
-                y_kien_mua_xe_id
-            )
-            VALUES
-            (
-                ?,
-                ?,
-                (SELECT MAX(id) FROM dm_ma_loai_xe WHERE name=?),
-                (SELECT MAX(id) FROM dm_loai_xe WHERE name=?),
-                (SELECT MAX(id) FROM dm_mau_xe WHERE name=?),
-                ?,
-                ?,
-                ?,
-                strftime('%s',?),
-                ?,
-                ?,
-                ?,
-                (SELECT MAX(id) FROM dm_ket_qua_goi_ra WHERE muc_dich_goi_ra_id=3 AND name=?)
-            )`
-        params = [
-            bike.cua_hang_id,
-            khach_hang_id,
-            bike.bike_code,
-            bike.bike_name,
-            bike.bike_color,
-            bike.frame_number,
-            bike.engine_number,
-            bike.bike_number,
-            bike.buy_date,
-            bike.warranty_number,
-            bike.note_1,
-            bike.note_2,
-            bike.y_kien_mua_xe
-        ]
-
-        result = await db.runSql(sql, params)
-        return result.hasOwnProperty('lastID') ? {xe_id: result.lastID, status:'OK'} : {status:'NOK', msg:'Lỗi khi thêm mới Xe', error: result}
-    } catch (err) {
-        return {status:'NOK', msg:'Lỗi exception khi thêm mới Xe', error: err}
-    }
-}
-
-async function _importService(service, khach_hang_id, xe_id) {
-    try {
-        let sql = `SELECT MAX(id) as dich_vu_id
-                FROM dich_vu
-                WHERE bill_number=?`
-        let params = [service.bill_number]
-        let result = await db.getRst(sql, params)
-
-        if (result.dich_vu_id) {
-            return {dich_vu_id: result.dich_vu_id, status:'NOK', msg: 'Đã import dịch vụ có Số phiêu ' + service.bill_number}
-        }
-
-        sql = `INSERT INTO dich_vu(
-                    cua_hang_id,
-                    khach_hang_id,
-                    xe_id,
-                    bill_number,
-                    km_number,
-                    service_date,
-                    in_date,
-                    out_date,
-                    reception_staff,
-                    repaire_staff_1,
-                    repaire_staff_2,
-                    check_staff,
-                    yeu_cau_id,
-                    is_keep_old_equip,
-                    offer_1,
-                    offer_2,
-                    offer_3,
-                    wage_price,
-                    equip_price,
-                    total_price,
-                    next_yeu_cau_id
-                    )
-                VALUES(
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    strftime('%s', ?),
-                    strftime('%s', ?),
-                    strftime('%s', ?),
-                    (SELECT MAX(id) FROM dm_nhan_vien WHERE name=?),
-                    (SELECT MAX(id) FROM dm_nhan_vien WHERE name=?),
-                    (SELECT MAX(id) FROM dm_nhan_vien WHERE name=?),
-                    (SELECT MAX(id) FROM dm_nhan_vien WHERE name=?),
-                    (SELECT MAX(id) FROM dm_yeu_cau WHERE name=?),
-                    ?,
-                    (SELECT MAX(id) FROM dm_tu_van WHERE name=?),
-                    (SELECT MAX(id) FROM dm_tu_van WHERE name=?),
-                    (SELECT MAX(id) FROM dm_tu_van WHERE name=?),
-                    ?,
-                    ?,
-                    ?,
-                    (SELECT MAX(id) FROM dm_yeu_cau WHERE name=?))`
-        params = [
-            service.cua_hang_id,
-            khach_hang_id,
-            xe_id,
-            service.bill_number,
-            service.km_number,
-            service.out_date,
-            service.in_date,
-            service.out_date,
-            service.reception_staff,
-            service.repaire_staff_1,
-            service.repaire_staff_2,
-            service.check_staff,
-            service.customer_require,
-            service.is_keep_old_equip == 0 ? 0 : 1,
-            service.offer_1,
-            service.offer_2,
-            service.offer_3,
-            service.wage_price,
-            service.equip_price,
-            service.total_price,
-            service.next_require
-        ]
-
-        result = await db.runSql(sql, params)
-        return result.hasOwnProperty('lastID') ? {dich_vu_id: result.lastID, status:'OK'} : {status:'NOK', msg:'Lỗi khi import dịch vụ', error: result}
-    } catch (err) {
-        return {status:'NOK', msg:'Lỗi exception khi import dịch vụ', error: err}
-    }
-}
+const { _updateCategory, _importBike, _importCustomer, _importService, _importEquip, _updateLastService4Bike } = require('./support')
 
 class Handler {
     addCustomer(req, res, next) {
@@ -478,17 +188,17 @@ class Handler {
         try {
             // console.log(customer);
             // Xu ly danh muc ma loai xe
-            updateCategory('dm_ma_loai_xe', {name: customer.bike_code})
+            _updateCategory('dm_ma_loai_xe', {name: customer.bike_code})
             // Xu ly danh muc loai xe
-            updateCategory('dm_loai_xe', {name: customer.bike_name})
+            _updateCategory('dm_loai_xe', {name: customer.bike_name})
             // Xu ly danh muc mau xe
-            updateCategory('dm_mau_xe', {name: customer.bike_color})
+            _updateCategory('dm_mau_xe', {name: customer.bike_color})
             // Xu ly danh muc quan,tp
-            updateCategory('dm_quan_huyen', {province: customer.province, district: customer.district})
+            _updateCategory('dm_quan_huyen', {province: customer.province, district: customer.district})
             // Xu ly nghe nghiep
-            updateCategory('dm_nghe_nghiep', {name: customer.job})
+            _updateCategory('dm_nghe_nghiep', {name: customer.job})
             // Xu ly tinh trang xe
-            updateCategory('dm_tinh_trang_xe', {name: customer.y_kien_mua_xe})
+            _updateCategory('dm_tinh_trang_xe', {name: customer.y_kien_mua_xe})
 
             // import khach hang
             let customer_result = await _importCustomer(customer)
@@ -497,7 +207,7 @@ class Handler {
 
             if (bike_result.status != 'OK') {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'NOK', msg: bike_result.msg, err: bike_result}))
+                res.end(JSON.stringify({status:'NOK', msg: bike_result.msg, err: bike_result, stt:customer.A}))
             }
 
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -513,46 +223,66 @@ class Handler {
         try {
             // console.log(customer);
             // Xu ly danh muc loai xe
-            updateCategory('dm_loai_xe', {name: customer.bike_name})
+            _updateCategory('dm_loai_xe', {name: customer.bike_name})
             // Xu ly danh muc nhan vien
-            updateCategory('dm_nhan_vien', {name: customer.reception_staff})
+            _updateCategory('dm_nhan_vien', {name: customer.reception_staff})
             // Xu ly danh muc nhan vien
-            updateCategory('dm_nhan_vien', {name: customer.repaire_staff_1})
+            _updateCategory('dm_nhan_vien', {name: customer.repaire_staff_1})
             // Xu ly danh muc nhan vien
-            updateCategory('dm_nhan_vien', {name: customer.repaire_staff_2})
+            _updateCategory('dm_nhan_vien', {name: customer.repaire_staff_2})
             // Xu ly danh muc nhan vien
-            updateCategory('dm_nhan_vien', {name: customer.check_staff})
+            _updateCategory('dm_nhan_vien', {name: customer.check_staff})
             // Xu ly danh muc yeu cau
-            updateCategory('dm_yeu_cau', {name: customer.customer_require})
+            _updateCategory('dm_yeu_cau', {name: customer.customer_require})
             // Xu ly danh muc yeu cau
-            updateCategory('dm_yeu_cau', {name: customer.next_require})
+            _updateCategory('dm_yeu_cau', {name: customer.next_require})
             // Xu ly tu van
-            updateCategory('dm_tu_van', {name: customer.offer_1})
+            _updateCategory('dm_tu_van', {name: customer.offer_1})
             // Xu ly tu van
-            updateCategory('dm_tu_van', {name: customer.offer_2})
+            _updateCategory('dm_tu_van', {name: customer.offer_2})
             // Xu ly tu van
-            updateCategory('dm_tu_van', {name: customer.offer_3})
+            _updateCategory('dm_tu_van', {name: customer.offer_3})
             // Xu ly danh muc phu tung
-            updateCategory('dm_phu_tung', {name: customer.equips})
+            _updateCategory('dm_phu_tung', {name: customer.equips})
 
             // import khach hang
             let customer_result = await _importCustomer(customer)
+
+            if (customer_result.is_error) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+                res.end(JSON.stringify({status:'NOK', msg: customer_result.msg, stt:customer.A}))
+            }
+
             // import xe
             let bike_result = await _importBike(customer, customer_result.khach_hang_id)
+
+            if (bike_result.is_error) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+                res.end(JSON.stringify({status:'NOK', msg: bike_result.msg, stt:customer.A}))
+            }
+
+            // console.log(customer_result, bike_result);
+
             // import service
-            if (customer_result.khach_hang_xe_id && bike_result.xe_id) {
+            if (customer_result.khach_hang_id && bike_result.xe_id) {
                 let service_result = await _importService(customer, customer_result.khach_hang_id, bike_result.xe_id)
 
                 if (service_result.status != 'OK') {
                     res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                    res.end(JSON.stringify({status:'NOK', msg: service_result.msg, err: service_result}))
+                    res.end(JSON.stringify({status:'NOK', msg: service_result.msg, err: service_result, stt:customer.A}))
                 }
+
+                // import service detail
+                _importEquip(service_result.dich_vu_id, customer.equips)
+
+                // update last service info 4 bike
+                _updateLastService4Bike(bike_result.xe_id, service_result.dich_vu_id, customer.customer_require, customer.out_date)
 
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Thành công'}))
             } else {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'NOK', msg: 'Không import được vì thiếu thông tin Khách hàng và xe'}))
+                res.end(JSON.stringify({status:'NOK', msg: 'Không import được vì thiếu thông tin Khách hàng và xe', customer_result, bike_result, stt:customer.A}))
             }
         } catch (err) {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
@@ -614,13 +344,13 @@ class Handler {
                 b.address`
 
         switch (filter) {
-
+            // AND a.buy_date >= strftime ('%s', date('now', '-30 day'))
             case 'after10BuyDate':
                 sql += ` FROM xe a , khach_hang b
                     WHERE a.y_kien_mua_xe_id IS NULL
                         AND (? IS NULL OR a.cua_hang_id=?)
                         AND a.buy_date <= strftime ('%s', date('now', '-10 day'))
-                        AND a.buy_date >= strftime ('%s', date('now', '-30 day'))
+
                         AND a.khach_hang_id=b.id
                     ORDER BY a.buy_date
                     LIMIT 30`
@@ -628,16 +358,17 @@ class Handler {
                 break;
 
             case 'afterMaintanceDate':
+                    // AND c.service_date >= strftime ('%s', date('now', '-17 day'))
                 sql += `    ,c.id AS dich_vu_id
                             ,strftime ('%d/%m/%Y', c.service_date, 'unixepoch') AS service_date
-                            ,(select max(name) from dm_loai_bao_duong where id=c.loai_bao_duong_id) loai_bao_duong
-                            ,c.offer_1
+                            ,(select max(name) from dm_yeu_cau where id=c.yeu_cau_id) yeu_cau
+                            ,(select max(name) from dm_tu_van where id=c.offer_1) offer_1
                             ,c.total_price
                         FROM xe a, khach_hang b, dich_vu c
                         WHERE a.khach_hang_id=b.id
                             AND a.id=c.xe_id
                             AND c.service_date <= strftime ('%s', date('now', '-7 day'))
-                            AND c.service_date >= strftime ('%s', date('now', '-17 day'))
+
                             AND c.y_kien_dich_vu_id IS NULL
                             AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY c.service_date
@@ -658,23 +389,10 @@ class Handler {
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
 
-            case 'ktdk7':
-                sql += ` , strftime('%d/%m/%Y', date(a.buy_date, 'unixepoch', '+1185 day')) AS invite_date
-                    FROM xe a , khach_hang b
-                    WHERE  (? IS NULL OR a.cua_hang_id=?)
-                        AND a.buy_date >= strftime ('%s', date('now', '-1185 day'))
-                        AND a.buy_date < strftime ('%s', date('now', '-1183 day'))
-                        AND (a.last_service_date IS NULL OR a.last_service_date < strftime('%s', date(a.buy_date, 'unixepoch', '+1185 day')))
-                        AND a.khach_hang_id=b.id
-                    ORDER BY a.buy_date
-                    LIMIT 30`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
-
             case 'birthday':
                 sql += `,(select max(name) from dm_muc_dich_goi_ra where id=a.last_muc_dich_goi_ra_id) last_muc_dich_goi_ra
                         ,(select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id AND muc_dich_goi_ra_id=a.last_muc_dich_goi_ra_id) last_ket_qua_goi_ra
-                        ,(select max(name) from dm_loai_bao_duong where id=a.last_loai_bao_duong_id) last_loai_bao_duong
+                        ,(select max(name) from dm_yeu_cau where id=a.last_yeu_cau_id) last_yeu_cau
                         ,strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
                     FROM xe a , khach_hang b
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
