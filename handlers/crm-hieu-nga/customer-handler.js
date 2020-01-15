@@ -9,9 +9,26 @@
 const db = require('../../db/sqlite3/crm-hieu-nga-dao')
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../../utils/utils')
 const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN"
-const { _updateCategory, _importBike, _importCustomer, _importService, _importEquip, _updateLastService4Bike } = require('./support')
+const { _updateCategory,
+    _importBike,
+    _importCustomer,
+    _importService,
+    _importEquip,
+    _updateLastService4Bike,
+    _initNextKtdkDate,
+    _updateLastCallout4Bike
+} = require('./support')
 
 class Handler {
+    initNextKtdkDate(req, res, next) {
+        _initNextKtdkDate().then(() => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'init success'}))
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
+
     addCustomer(req, res, next) {
         let customer = req.json_data
         customer.full_name_no_sign = capitalizeFirstLetter(removeVietnameseFromString(customer.full_name.trim()))
@@ -276,7 +293,7 @@ class Handler {
                 _importEquip(service_result.dich_vu_id, customer.equips)
 
                 // update last service info 4 bike
-                _updateLastService4Bike(bike_result.xe_id, service_result.dich_vu_id, customer.customer_require, customer.out_date)
+                _updateLastService4Bike(bike_result.xe_id, service_result.dich_vu_id, customer.customer_require, customer.offer_1, customer.out_date)
 
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Thành công'}))
@@ -341,13 +358,15 @@ class Handler {
                 b.sex,
                 b.job,
                 b.province_code,
-                b.address`
+                b.address,
+                (select max(name) from dm_muc_dich_goi_ra where id=a.last_muc_dich_goi_ra_id) last_muc_dich_goi_ra,
+                (select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id) last_ket_qua_goi_ra`
 
         switch (filter) {
             // AND a.buy_date >= strftime ('%s', date('now', '-30 day'))
             case 'after10BuyDate':
                 sql += ` FROM xe a , khach_hang b
-                    WHERE a.y_kien_mua_xe_id IS NULL
+                    WHERE (a.y_kien_mua_xe_id IS NULL OR a.y_kien_mua_xe_id=9)
                         AND (? IS NULL OR a.cua_hang_id=?)
                         AND a.buy_date <= strftime ('%s', date('now', '-10 day'))
 
@@ -369,14 +388,14 @@ class Handler {
                             AND a.id=c.xe_id
                             AND c.service_date <= strftime ('%s', date('now', '-7 day'))
 
-                            AND c.y_kien_dich_vu_id IS NULL
+                            AND (c.y_kien_dich_vu_id IS NULL OR c.y_kien_dich_vu_id = 9)
                             AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY c.service_date
                     LIMIT 30`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
 
-            case 'ktdk6':
+            case 'ktdk':
                 sql += ` , strftime('%d/%m/%Y', date(a.buy_date, 'unixepoch', '+1000 day')) AS invite_date
                     FROM xe a , khach_hang b
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
@@ -390,9 +409,7 @@ class Handler {
                 break;
 
             case 'birthday':
-                sql += `,(select max(name) from dm_muc_dich_goi_ra where id=a.last_muc_dich_goi_ra_id) last_muc_dich_goi_ra
-                        ,(select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id AND muc_dich_goi_ra_id=a.last_muc_dich_goi_ra_id) last_ket_qua_goi_ra
-                        ,(select max(name) from dm_yeu_cau where id=a.last_yeu_cau_id) last_yeu_cau
+                sql += `,(select max(name) from dm_yeu_cau where id=a.last_yeu_cau_id) last_yeu_cau
                         ,strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
                     FROM xe a , khach_hang b
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
@@ -689,24 +706,8 @@ class Handler {
         ]
 
         db.runSql(sql, params).then(goi_ra => {
-            sql = `update xe
-                    SET y_kien_mua_xe_id=?,
-                        feedback_date=strftime('%s', datetime('now', 'localtime')),
-                        last_goi_ra_id=?,
-                        last_muc_dich_goi_ra_id=?,
-                        last_ket_qua_goi_ra_id=?,
-                        note_1=?,
-                        last_call_date=strftime('%s', datetime('now', 'localtime'))
-                    WHERE id=?`
-            params = [
-                feedback.ket_qua_goi_ra_id,
-                goi_ra.lastID,
-                3,
-                feedback.ket_qua_goi_ra_id,
-                feedback.note,
-                feedback.xe_id,
-            ]
-            return db.runSql(sql, params).then(result => {
+            _updateLastCallout4Bike(feedback.xe_id, goi_ra.lastID, 3, feedback.ket_qua_goi_ra_id, feedback.note)
+            .then(result => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công', count:result.changes, id:result.lastID}))
             })
@@ -754,17 +755,25 @@ class Handler {
                     SET call_date=strftime('%s', datetime('now', 'localtime')),
                         y_kien_dich_vu_id=?,
                         thai_do_nhan_vien_id=?,
-                        note=?
+                        note=?,
+                        count_callout_fail = (
+                            CASE WHEN 9 = ? THEN count_callout_fail + 1
+                            ELSE 0 END
+                        )
                     WHERE id=?`
             params = [
                 feedback.y_kien_dich_vu_id,
                 feedback.thai_do_nhan_vien_id,
                 feedback.note,
+                Number(feedback.y_kien_dich_vu_id),
                 feedback.dich_vu_id,
             ]
+
             return db.runSql(sql, params).then(result => {
+                return _updateLastCallout4Bike(feedback.xe_id, goi_ra.lastID, 2, feedback.y_kien_dich_vu_id, feedback.note)
+            }).then(result => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công', count:result.changes, id:result.lastID}))
+                res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
             })
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
@@ -983,26 +992,28 @@ class Handler {
         if (!xe_id || xe_id=='undefined') xe_id = ''
 
         db.getRsts(`select
-                        loai_bao_duong_id,
-                        (select max(name) from dm_loai_bao_duong where id=dich_vu.loai_bao_duong_id) as loai_bao_duong,
                         xe_id,
+                        bill_number,
+                        km_number,
                         strftime ('%d/%m/%Y', service_date, 'unixepoch') AS service_date,
-                        strftime ('%d/%m/%Y %H:%m', in_date, 'unixepoch') AS in_date,
-                        strftime ('%d/%m/%Y %H:%m', out_date, 'unixepoch') AS out_date,
+                        strftime ('%d/%m/%Y', in_date, 'unixepoch') AS in_date,
+                        strftime ('%d/%m/%Y', out_date, 'unixepoch') AS out_date,
                         (select max(name) from dm_nhan_vien where id=dich_vu.reception_staff) as reception_staff,
                         (select max(name) from dm_nhan_vien where id=dich_vu.repaire_staff_1) as repaire_staff_1,
                         (select max(name) from dm_nhan_vien where id=dich_vu.repaire_staff_2) as repaire_staff_2,
                         (select max(name) from dm_nhan_vien where id=dich_vu.check_staff) as check_staff,
-                        customer_require,
+                        (select max(id) from dm_yeu_cau where id=dich_vu.yeu_cau_id) yeu_cau,
                         is_keep_old_equip,
-                        offer_1,
-                        offer_2,
-                        offer_3,
-                        equips,
-                        price_wage,
+                        (select max(name) from dm_tu_van where id=dich_vu.offer_1) offer_1,
+                        (select max(name) from dm_tu_van where id=dich_vu.offer_2) offer_2,
+                        (select max(name) from dm_tu_van where id=dich_vu.offer_3) offer_3,
+                        wage_price,
+                        equip_price,
                         total_price,
-                        call_date,
-                        y_kien_dich_vu_id
+                        strftime ('%d/%m/%Y', call_date, 'unixepoch') as call_date,
+                        (select max(name) from dm_ket_qua_goi_ra where id=dich_vu.y_kien_dich_vu_id) y_kien_dich_vu,
+                        (select max(name) from dm_thai_do_nhan_vien where id=dich_vu.thai_do_nhan_vien_id) thai_do_nhan_vien,
+                        note
                     from  dich_vu where xe_id=?
                     order by service_date`,
                     [xe_id]
@@ -1023,27 +1034,33 @@ class Handler {
         let dich_vu_id = req.params.dich_vu_id
 
         db.getRst(`select
-                        loai_bao_duong_id,
-                        (select max(name) from dm_loai_bao_duong where id=dich_vu.loai_bao_duong_id) as loai_bao_duong,
                         xe_id,
+                        bill_number,
+                        km_number,
                         strftime ('%d/%m/%Y', service_date, 'unixepoch') AS service_date,
-                        strftime ('%d/%m/%Y %H:%m', in_date, 'unixepoch') AS in_date,
-                        strftime ('%d/%m/%Y %H:%m', out_date, 'unixepoch') AS out_date,
+                        strftime ('%d/%m/%Y', in_date, 'unixepoch') AS in_date,
+                        strftime ('%d/%m/%Y', out_date, 'unixepoch') AS out_date,
                         (select max(name) from dm_nhan_vien where id=dich_vu.reception_staff) as reception_staff,
                         (select max(name) from dm_nhan_vien where id=dich_vu.repaire_staff_1) as repaire_staff_1,
                         (select max(name) from dm_nhan_vien where id=dich_vu.repaire_staff_2) as repaire_staff_2,
                         (select max(name) from dm_nhan_vien where id=dich_vu.check_staff) as check_staff,
-                        customer_require,
+                        (select max(name) from dm_yeu_cau where id=dich_vu.yeu_cau_id) yeu_cau,
                         is_keep_old_equip,
-                        offer_1,
-                        offer_2,
-                        offer_3,
-                        equips,
-                        price_wage,
+                        (select max(name) from dm_tu_van where id=dich_vu.offer_1) offer_1,
+                        (select max(name) from dm_tu_van where id=dich_vu.offer_2) offer_2,
+                        (select max(name) from dm_tu_van where id=dich_vu.offer_3) offer_3,
+                        wage_price,
+                        equip_price,
                         total_price,
-                        call_date,
-                        y_kien_dich_vu_id
-                    from  dich_vu where id=?`,
+                        strftime ('%d/%m/%Y', call_date, 'unixepoch') as call_date,
+                        (select max(name) from dm_ket_qua_goi_ra where id=dich_vu.y_kien_dich_vu_id) y_kien_dich_vu,
+                        (select max(name) from dm_thai_do_nhan_vien where id=dich_vu.thai_do_nhan_vien_id) thai_do_nhan_vien,
+                        note,
+                        group_concat(dm_phu_tung.name) AS equips
+                    FROM  dich_vu INNER JOIN phu_tung ON dich_vu.id=phu_tung.dich_vu_id
+                            INNER JOIN dm_phu_tung ON phu_tung.phu_tung_id=dm_phu_tung.id
+                    WHERE dich_vu.id=?
+                    GROUP BY dich_vu.id`,
                     [dich_vu_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });

@@ -186,7 +186,7 @@ router.post('/send-sms'
     , postHandler.jsonProcess
     , smsHanlder.sendSmsRequest
 );
-router.get('/test-send-sms-job'
-    , smsHanlder.sendSmsJob
+router.get('/init-next-ktdk_date'
+    , customerHanlder.initNextKtdkDate
 );
 module.exports = router;

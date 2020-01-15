@@ -2,6 +2,40 @@
 const db = require('../../db/sqlite3/crm-hieu-nga-dao')
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../../utils/utils')
 
+const SUPPORT_PARAM = {
+    KTDK1: 'KTDK LAN 1',
+    KTDK2: 'KTDK LAN 2',
+    KTDK3: 'KTDK LAN 3',
+    KTDK4: 'KTDK LAN 4',
+    KTDK5: 'KTDK LAN 5',
+    KTDK6: 'KTDK LAN 6',
+    KTDK7: 'KTDK LAN 7',
+    BDTB: 'BDTB',
+}
+
+function _initNextKtdkDate() {
+    let sql = ``
+    let params = []
+    let offer = SUPPORT_PARAM.KTDK1
+
+    sql = `SELECT id FROM xe WHERE buy_date IS NOT NULL AND next_ktdk_date IS NULL`
+
+    return db.getRsts(sql, params).then(bikes => {
+        for (let bike of bikes) {
+            db.runSql(
+                `UPDATE xe
+                SET
+                    next_ktdk_date=strftime('%s', buy_date, 'unixepoch', '+'|| (select max(n_day_after) from sms_config where type=?) ||' day'),
+                    next_ktdk_type=(select max(id) from sms_config where type=?)
+                WHERE id=?`,
+                [offer, offer, bike.id]
+            )
+        }
+    }).catch(err => {
+        return err
+    })
+}
+
 /**
  * @categoryName: ten danh muc
  * @data: du lieu cua danh muc do, vd {code:xx, name:'xy}
@@ -321,18 +355,95 @@ async function _importEquip(dich_vu_id, equips) {
     }
 }
 
-async function _updateLastService4Bike(xe_id, dich_vu_id, customer_require, out_date) {
+async function _updateLastService4Bike(xe_id, dich_vu_id, customer_require, offer_1, out_date) {
     try {
+        let offer = removeVietnameseFromString(offer_1)
+        let next_offer
+
+        switch (offer) {
+            case SUPPORT_PARAM.KTDK1:
+                next_offer = SUPPORT_PARAM.KTDK2
+                break;
+            case SUPPORT_PARAM.KTDK2:
+                next_offer = SUPPORT_PARAM.KTDK3
+                break;
+            case SUPPORT_PARAM.KTDK3:
+                next_offer = SUPPORT_PARAM.KTDK4
+                break;
+            case SUPPORT_PARAM.KTDK4:
+                next_offer = SUPPORT_PARAM.KTDK5
+                break;
+            case SUPPORT_PARAM.KTDK5:
+                next_offer = SUPPORT_PARAM.KTDK6
+                break;
+            case SUPPORT_PARAM.KTDK6:
+                next_offer = SUPPORT_PARAM.KTDK7
+                break;
+            case SUPPORT_PARAM.KTDK7:
+                next_offer = SUPPORT_PARAM.BDTB
+                break;
+            case SUPPORT_PARAM.BDTB:
+                next_offer = ''
+                break;
+            default:
+                next_offer = ''
+                break;
+        }
+
         let sql = `UPDATE xe
                     SET last_dich_vu_id=?,
                         last_yeu_cau_id=(SELECT MAX(id) FROM dm_yeu_cau WHERE name=?),
-                        last_service_date=strftime('%s', ?)
+                        last_service_date=strftime('%s', ?),
+                        last_ktdk_date=strftime('%s', ?),
+                        last_ktdk_type=(SELECT MAX(id) FROM sms_config WHERE type=?),
+                        next_ktdk_date=strftime('%s', buy_date, 'unixepoch', '+'|| (select max(n_day_after) from sms_config where type=?) ||' day'),
+                        next_ktdk_type=(select max(id) from sms_config where type=?)
                     WHERE id=?`
-        let params = [dich_vu_id, customer_require, out_date, xe_id]
+        let params = [
+            dich_vu_id,
+            customer_require,
+            out_date,
+            out_date,
+            offer,
+            next_offer,
+            next_offer,
+            xe_id
+        ]
 
-        await db.getRst(sql, params)
+        return db.getRst(sql, params)
     } catch (err) {
-        return {status:'NOK', msg:'Lỗi exception khi update xe', error: err}
+        throw err
+    }
+}
+
+async function _updateLastCallout4Bike(xe_id, goi_ra_id, muc_dich_goi_ra_id, ket_qua_goi_ra_id, note) {
+    try {
+        let sql = `update xe
+                SET y_kien_mua_xe_id=?,
+                    feedback_date=strftime('%s', datetime('now', 'localtime')),
+                    last_goi_ra_id=?,
+                    last_muc_dich_goi_ra_id=?,
+                    last_ket_qua_goi_ra_id=?,
+                    note_1=?,
+                    last_call_date=strftime('%s', datetime('now', 'localtime')),
+                    count_callout_fail = (
+                        CASE WHEN 9 = ? THEN count_callout_fail + 1
+                        ELSE 0 END
+                    )
+                WHERE id=?`
+        let params = [
+            ket_qua_goi_ra_id,
+            goi_ra_id,
+            muc_dich_goi_ra_id,
+            ket_qua_goi_ra_id,
+            note,
+            Number(ket_qua_goi_ra_id),
+            xe_id,
+        ]
+
+        return db.getRst(sql, params)
+    } catch (err) {
+        throw err
     }
 }
 
@@ -342,5 +453,7 @@ module.exports = {
     _importBike,
     _importService,
     _importEquip,
-    _updateLastService4Bike
+    _updateLastService4Bike,
+    _initNextKtdkDate,
+    _updateLastCallout4Bike
 }

@@ -64,7 +64,6 @@ class Handler {
                     SET
                         n_day_after = ?,
                         content = ?,
-                        sms_hour = ?,
                         update_datetime = strftime('%s', datetime('now', 'localtime')),
                         update_user = ?
                     WHERE
@@ -72,7 +71,6 @@ class Handler {
             params = [
                 sms_config.n_day_after,
                 sms_config.content,
-                sms_config.sms_hour,
                 req.userInfo.id,
                 sms_config.id
             ]
