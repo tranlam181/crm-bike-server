@@ -367,6 +367,7 @@ class Handler {
             case 'after10BuyDate':
                 sql += ` FROM xe a , khach_hang b
                     WHERE (a.y_kien_mua_xe_id IS NULL OR a.y_kien_mua_xe_id=9)
+                        AND a.count_callout_fail < 2
                         AND (? IS NULL OR a.cua_hang_id=?)
                         AND a.buy_date <= strftime ('%s', date('now', '-10 day'))
 
@@ -388,6 +389,8 @@ class Handler {
                             AND a.id=c.xe_id
                             AND c.service_date <= strftime ('%s', date('now', '-7 day'))
 
+                            AND c.count_callout_fail < 2
+                            AND (c.offer_1 = 6 OR total_price >= 1500000)
                             AND (c.y_kien_dich_vu_id IS NULL OR c.y_kien_dich_vu_id = 9)
                             AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY c.service_date
@@ -396,14 +399,15 @@ class Handler {
                 break;
 
             case 'ktdk':
-                sql += ` , strftime('%d/%m/%Y', date(a.buy_date, 'unixepoch', '+1000 day')) AS invite_date
-                    FROM xe a , khach_hang b
+                sql += `, strftime ('%d/%m/%Y', a.next_ktdk_date, 'unixepoch') AS next_ktdk_date
+                        , c.type as next_ktdk_type
+                    FROM xe a , khach_hang b, sms_config c
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
-                        AND a.buy_date >= strftime ('%s', date('now', '-1000 day'))
-                        AND a.buy_date < strftime ('%s', date('now', '-998 day'))
-                        AND (a.last_service_date IS NULL OR a.last_service_date < strftime('%s', date(a.buy_date, 'unixepoch', '+1000 day')))
+                        AND a.next_ktdk_date <= strftime ('%s', date('now'))
+                        AND a.count_callout_fail < 2
                         AND a.khach_hang_id=b.id
-                    ORDER BY a.buy_date
+                        AND a.next_ktdk_type = c.id
+                    ORDER BY a.next_ktdk_date
                     LIMIT 30`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
@@ -706,10 +710,10 @@ class Handler {
         ]
 
         db.runSql(sql, params).then(goi_ra => {
-            _updateLastCallout4Bike(feedback.xe_id, goi_ra.lastID, 3, feedback.ket_qua_goi_ra_id, feedback.note)
+            return _updateLastCallout4Bike(feedback.xe_id, goi_ra.lastID, 3, feedback.ket_qua_goi_ra_id, feedback.note)
             .then(result => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công', count:result.changes, id:result.lastID}))
+                res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
             })
         })
         .catch(err => {
@@ -874,20 +878,7 @@ class Handler {
         ]
 
         db.runSql(sql, params).then(goi_ra => {
-            sql = `update xe
-                    SET last_goi_ra_id=?,
-                        last_muc_dich_goi_ra_id=?,
-                        last_ket_qua_goi_ra_id=?,
-                        last_call_date=strftime('%s', datetime('now', 'localtime'))
-                    WHERE id=?`
-            params = [
-                goi_ra.lastID,
-                callout.muc_dich_goi_ra_id,
-                callout.ket_qua_goi_ra_id,
-                callout.xe_id,
-            ]
-
-            return db.runSql(sql, params).then(() => {
+            return _updateLastCallout4Bike(callout.xe_id, goi_ra.lastID, callout.muc_dich_goi_ra_id, callout.ket_qua_goi_ra_id, callout.note).then(() => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
             })
@@ -1056,7 +1047,7 @@ class Handler {
                         (select max(name) from dm_ket_qua_goi_ra where id=dich_vu.y_kien_dich_vu_id) y_kien_dich_vu,
                         (select max(name) from dm_thai_do_nhan_vien where id=dich_vu.thai_do_nhan_vien_id) thai_do_nhan_vien,
                         note,
-                        group_concat(dm_phu_tung.name) AS equips
+                        group_concat(dm_phu_tung.name, ', ') AS equips
                     FROM  dich_vu INNER JOIN phu_tung ON dich_vu.id=phu_tung.dich_vu_id
                             INNER JOIN dm_phu_tung ON phu_tung.phu_tung_id=dm_phu_tung.id
                     WHERE dich_vu.id=?
