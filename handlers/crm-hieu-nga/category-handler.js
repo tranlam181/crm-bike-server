@@ -182,8 +182,7 @@ class Handler {
         let cua_hang_id = req.params.cua_hang_id
         db.getRsts(`select id,name \
                     from  dm_nhan_vien \
-                    where cua_hang_id=?
-                    ORDER BY id`, [cua_hang_id]
+                    ORDER BY id`, []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
@@ -249,8 +248,28 @@ class Handler {
         });
     }
 
+    getBikeCodeTypes(req, res, next) {
+        db.getRsts("select id, name from dm_ma_loai_xe ORDER BY name", []
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getJobs(req, res, next) {
+        db.getRsts("select id, name from dm_nghe_nghiep ORDER BY name", []
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
     getBikeColors(req, res, next) {
-        db.getRsts("select id, name from dm_mau_xe", []
+        db.getRsts("select id, name from dm_mau_xe ORDER BY name", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row));

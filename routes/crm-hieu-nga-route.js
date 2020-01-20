@@ -57,6 +57,12 @@ router.get('/category/callout-purposes'
 router.get('/category/staff-attitudes'
     , categoryHandler.getStaffAttitude
 );
+router.get('/category/jobs'
+    , categoryHandler.getJobs
+);
+router.get('/category/bike-code-types'
+    , categoryHandler.getBikeCodeTypes
+);
 router.post('/import-customer'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
@@ -71,6 +77,11 @@ router.post('/customers'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
     , customerHanlder.addCustomer
+);
+router.put('/customers/:khach_hang_id'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , customerHanlder.saveCustomer
 );
 router.delete('/customers/:khach_hang_id'
     , tokenUtil.checkToken
@@ -164,6 +175,11 @@ router.get('/export-customers'
 router.get('/bikes/:xe_id'
     , tokenUtil.checkToken
     , customerHanlder.getBike
+);
+router.put('/bikes/:xe_id'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , customerHanlder.saveBike
 );
 router.get('/sms-configs'
     , smsHanlder.getSmsConfig
