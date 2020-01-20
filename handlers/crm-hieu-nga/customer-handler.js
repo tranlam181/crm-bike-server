@@ -478,15 +478,19 @@ class Handler {
         let khach_hang_id = req.params.khach_hang_id
 
         db.getRst(`SELECT id AS khach_hang_id,
+                    quan_huyen_id,
+                    nghe_nghiep_id,
                     full_name,
                     phone,
                     phone_2,
+                    strftime ('%Y-%m-%d', birthday, 'unixepoch') AS birthday_edit,
                     strftime ('%d/%m/%Y', birthday, 'unixepoch') AS birthday,
-                    (SELECT MAX (name)
-                        FROM dm_dia_ly
-                        WHERE province_code = a.province_code AND district_code = '' AND precinct_code = '') AS province,
+                    (SELECT MAX (district) || ' - ' || MAX (province)
+                        FROM dm_quan_huyen
+                        WHERE id = a.quan_huyen_id) AS district,
+                    sex AS sex_edit,
                     CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,
-                    job,
+                    (select max(name) from dm_nghe_nghiep where id=a.nghe_nghiep_id) AS nghe_nghiep,
                     address
             FROM khach_hang a
             WHERE id=?`, [khach_hang_id]
@@ -505,15 +509,21 @@ class Handler {
                     id as xe_id,
                     cua_hang_id,
                     khach_hang_id,
-                    (SELECT MAX(name) FROM dm_cua_hang where id=xe.cua_hang_id) AS shop_name,
-                    (SELECT MAX(name) FROM dm_loai_xe where id=xe.loai_xe_id) AS bike_name,
+                    ma_loai_xe_id,
+                    loai_xe_id,
                     mau_xe_id,
+                    (SELECT MAX(name) FROM dm_cua_hang where id=xe.cua_hang_id) AS shop_name,
+                    (SELECT MAX(name) FROM dm_ma_loai_xe where id=xe.ma_loai_xe_id) AS bike_type,
+                    (SELECT MAX(name) FROM dm_loai_xe where id=xe.loai_xe_id) AS bike_name,
+                    (SELECT MAX(name) FROM dm_mau_xe where id=xe.mau_xe_id) AS bike_color,
                     frame_number,
                     engine_number,
                     bike_number,
                     strftime ('%d/%m/%Y', buy_date, 'unixepoch') AS buy_date,
+                    strftime ('%Y-%m-%d', buy_date, 'unixepoch') AS buy_date_edit,
                     warranty_number,
-                    y_kien_mua_xe_id,
+                    note_1,
+                    (SELECT MAX(name) FROM dm_ket_qua_goi_ra where id=xe.y_kien_mua_xe_id) AS y_kien_mua_xe,
                     strftime ('%d/%m/%Y', last_call_date, 'unixepoch') AS call_date
             from xe
             where id=?`, [xe_id]
