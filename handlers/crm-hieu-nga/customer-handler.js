@@ -201,6 +201,7 @@ class Handler {
 
     async saveCustomer(req, res, next) {
         let customer = req.json_data
+        let khach_hang_id = req.params.khach_hang_id
 
         try {
             let sql = ``
@@ -226,7 +227,7 @@ class Handler {
                 customer.nghe_nghiep_id,
                 customer.address,
                 capitalizeFirstLetter(removeVietnameseFromString(customer.full_name)),
-                customer.khach_hang_id
+                khach_hang_id
             ]
 
             await db.runSql(sql, params)
@@ -240,7 +241,45 @@ class Handler {
     }
 
     async saveBike(req, res, next) {
+        let bike = req.json_data
+        let xe_id = req.params.xe_id
 
+        try {
+            let sql = ``
+            let params = []
+
+            sql = `UPDATE
+                        xe
+                    SET
+                        ma_loai_xe_id = ?,
+                        loai_xe_id = ?,
+                        mau_xe_id = ?,
+                        frame_number = ?,
+                        engine_number = ?,
+                        bike_number = ?,
+                        buy_date = strftime('%s', ?),
+                        warranty_number = ?
+                    WHERE id = ?`
+            params = [
+                bike.ma_loai_xe_id,
+                bike.loai_xe_id,
+                bike.mau_xe_id,
+                bike.frame_number,
+                bike.engine_number,
+                bike.bike_number,
+                bike.buy_date,
+                bike.warranty_number,
+                xe_id
+            ]
+
+            await db.runSql(sql, params)
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Lưu thông tin thành công'}))
+
+        } catch (err) {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        }
     }
 
     async importCustomer(req, res, next) {
@@ -456,31 +495,20 @@ class Handler {
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
 
-            case 'birthday':
-                sql += `,(select max(name) from dm_yeu_cau where id=a.last_yeu_cau_id) last_yeu_cau
-                        ,strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
-                    FROM xe a , khach_hang b
+            case 'smsNotCome':
+                sql += `, strftime ('%d/%m/%Y', a.next_ktdk_date, 'unixepoch') AS next_ktdk_date
+                        , c.type as next_ktdk_type
+                    FROM xe a , khach_hang b, sms_config c
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
+                        AND a.next_ktdk_date <= strftime ('%s', date('now'))
+                        AND a.count_callout_fail < 2
+                        AND a.last_service_date < a.sms_date
+                        AND a.sms_type IN (1,2,3,4,5,6,7,8,11)
                         AND a.khach_hang_id=b.id
-                        AND strftime ('%m', b.birthday, 'unixepoch') = strftime ('%m', 'now')
-                    ORDER BY CAST (strftime ('%d', b.birthday, 'unixepoch') AS DECIMAL), b.full_name_no_sign`
+                        AND a.next_ktdk_type = c.id
+                    ORDER BY a.next_ktdk_date
+                    LIMIT 30`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
-
-            case 'random':
-                sql += `,(select max(name) from dm_muc_dich_goi_ra where id=a.last_muc_dich_goi_ra_id) last_muc_dich_goi_ra
-                        ,(select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id AND muc_dich_goi_ra_id=a.last_muc_dich_goi_ra_id) last_ket_qua_goi_ra
-                        ,(select max(name) from dm_loai_bao_duong where id=a.last_loai_bao_duong_id) last_loai_bao_duong
-                        ,strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
-                FROM xe a , khach_hang b
-                WHERE  (? IS NULL OR a.cua_hang_id=?)
-                    AND a.khach_hang_id=b.id
-                LIMIT 50
-                OFFSET ABS(RANDOM()) % MAX((SELECT COUNT(*) FROM xe WHERE (? IS NULL OR cua_hang_id=?)), 1)`
-                params = [userInfo.cua_hang_id,
-                        userInfo.cua_hang_id,
-                        userInfo.cua_hang_id,
-                        userInfo.cua_hang_id]
                 break;
 
             case 'search':
