@@ -199,6 +199,50 @@ class Handler {
         })
     }
 
+    async saveCustomer(req, res, next) {
+        let customer = req.json_data
+
+        try {
+            let sql = ``
+            let params = []
+
+            sql = `UPDATE khach_hang
+                    SET
+                        full_name = ?,
+                        phone = ?,
+                        phone_2 = ?,
+                        birthday = strftime('%s',?),
+                        sex = ?,
+                        nghe_nghiep_id = ?,
+                        address = ?,
+                        full_name_no_sign = ?
+                    WHERE id = ?`
+            params = [
+                customer.full_name,
+                customer.phone,
+                customer.phone_2,
+                customer.birthday,
+                customer.sex == 'NAM' || customer.sex == 'MALE' || customer.sex == '1' ? 1 : 0,
+                customer.nghe_nghiep_id,
+                customer.address,
+                capitalizeFirstLetter(removeVietnameseFromString(customer.full_name)),
+                customer.khach_hang_id
+            ]
+
+            await db.runSql(sql, params)
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'Lưu thông tin thành công'}))
+
+        } catch (err) {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        }
+    }
+
+    async saveBike(req, res, next) {
+
+    }
+
     async importCustomer(req, res, next) {
         let customer = req.json_data
 
