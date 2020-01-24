@@ -496,14 +496,14 @@ class Handler {
                 break;
 
             case 'smsNotCome':
-                sql += `, strftime ('%d/%m/%Y', a.next_ktdk_date, 'unixepoch') AS next_ktdk_date
+                sql += `, strftime ('%d/%m/%Y', a.sms_date, 'unixepoch') AS sms_date
+                        , strftime ('%d/%m/%Y', a.next_ktdk_date, 'unixepoch') AS next_ktdk_date
                         , c.type as next_ktdk_type
                     FROM xe a , khach_hang b, sms_config c
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
                         AND a.next_ktdk_date <= strftime ('%s', date('now'))
                         AND a.count_callout_fail < 2
                         AND a.last_service_date < a.sms_date
-                        AND a.sms_type IN (1,2,3,4,5,6,7,8,11)
                         AND a.khach_hang_id=b.id
                         AND a.next_ktdk_type = c.id
                     ORDER BY a.next_ktdk_date

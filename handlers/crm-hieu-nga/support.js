@@ -397,7 +397,8 @@ async function _updateLastService4Bike(xe_id, dich_vu_id, customer_require, offe
                         last_ktdk_date=strftime('%s', ?),
                         last_ktdk_type=(SELECT MAX(id) FROM sms_config WHERE type=?),
                         next_ktdk_date=strftime('%s', buy_date, 'unixepoch', '+'|| (select max(n_day_after) from sms_config where type=?) ||' day'),
-                        next_ktdk_type=(select max(id) from sms_config where type=?)
+                        next_ktdk_type=(select max(id) from sms_config where type=?),
+                        count_callout_fail = 0
                     WHERE id=?`
         let params = [
             dich_vu_id,

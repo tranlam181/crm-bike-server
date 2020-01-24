@@ -229,7 +229,7 @@ class Handler {
     }
 
     getCalloutPurposes(req, res, next) {
-        db.getRsts("select id, name from dm_muc_dich_goi_ra order by order_", []
+        db.getRsts("select id, name FROM dm_muc_dich_goi_ra WHERE is_chien_dich IS NULL ORDER BY order_", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row));
