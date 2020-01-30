@@ -9,21 +9,24 @@
 const db = require('../../db/sqlite3/crm-hieu-nga-dao')
 const {capitalizeFirstLetter, removeVietnameseFromString} = require('../../utils/utils')
 const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN"
-const { _updateCategory,
-    _importBike,
-    _importCustomer,
-    _importService,
-    _importEquip,
-    _updateLastService4Bike,
-    _initNextKtdkDate,
-    _updateLastCallout4Bike
-} = require('./support')
+const support = require('./support')
 
 class Handler {
     initNextKtdkDate(req, res, next) {
-        _initNextKtdkDate().then(() => {
+        support._initNextKtdkDate().then(() => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
             res.end(JSON.stringify({status:'OK', msg:'init success'}))
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
+
+    test(req, res, next) {
+        let xe_id = req.query.xe_id
+
+        support._updateSmsSchedule(xe_id).then(() => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({status:'OK', msg:'init success ' + xe_id}))
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
@@ -288,22 +291,22 @@ class Handler {
         try {
             // console.log(customer);
             // Xu ly danh muc ma loai xe
-            _updateCategory('dm_ma_loai_xe', {name: customer.bike_code})
+            support.support._updateCategory('dm_ma_loai_xe', {name: customer.bike_code})
             // Xu ly danh muc loai xe
-            _updateCategory('dm_loai_xe', {name: customer.bike_name})
+            support._updateCategory('dm_loai_xe', {name: customer.bike_name})
             // Xu ly danh muc mau xe
-            _updateCategory('dm_mau_xe', {name: customer.bike_color})
+            support._updateCategory('dm_mau_xe', {name: customer.bike_color})
             // Xu ly danh muc quan,tp
-            _updateCategory('dm_quan_huyen', {province: customer.province, district: customer.district})
+            support._updateCategory('dm_quan_huyen', {province: customer.province, district: customer.district})
             // Xu ly nghe nghiep
-            _updateCategory('dm_nghe_nghiep', {name: customer.job})
+            support._updateCategory('dm_nghe_nghiep', {name: customer.job})
             // Xu ly tinh trang xe
-            _updateCategory('dm_tinh_trang_xe', {name: customer.y_kien_mua_xe})
+            support._updateCategory('dm_tinh_trang_xe', {name: customer.y_kien_mua_xe})
 
             // import khach hang
-            let customer_result = await _importCustomer(customer)
+            let customer_result = await support._importCustomer(customer)
             // import xe
-            let bike_result = await _importBike(customer, customer_result.khach_hang_id)
+            let bike_result = await support._importBike(customer, customer_result.khach_hang_id)
 
             if (bike_result.status != 'OK') {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -323,30 +326,30 @@ class Handler {
         try {
             // console.log(customer);
             // Xu ly danh muc loai xe
-            _updateCategory('dm_loai_xe', {name: customer.bike_name})
+            support._updateCategory('dm_loai_xe', {name: customer.bike_name})
             // Xu ly danh muc nhan vien
-            _updateCategory('dm_nhan_vien', {name: customer.reception_staff})
+            support._updateCategory('dm_nhan_vien', {name: customer.reception_staff})
             // Xu ly danh muc nhan vien
-            _updateCategory('dm_nhan_vien', {name: customer.repaire_staff_1})
+            support._updateCategory('dm_nhan_vien', {name: customer.repaire_staff_1})
             // Xu ly danh muc nhan vien
-            _updateCategory('dm_nhan_vien', {name: customer.repaire_staff_2})
+            support._updateCategory('dm_nhan_vien', {name: customer.repaire_staff_2})
             // Xu ly danh muc nhan vien
-            _updateCategory('dm_nhan_vien', {name: customer.check_staff})
+            support._updateCategory('dm_nhan_vien', {name: customer.check_staff})
             // Xu ly danh muc yeu cau
-            _updateCategory('dm_yeu_cau', {name: customer.customer_require})
+            support._updateCategory('dm_yeu_cau', {name: customer.customer_require})
             // Xu ly danh muc yeu cau
-            _updateCategory('dm_yeu_cau', {name: customer.next_require})
+            support._updateCategory('dm_yeu_cau', {name: customer.next_require})
             // Xu ly tu van
-            _updateCategory('dm_tu_van', {name: customer.offer_1})
+            support._updateCategory('dm_tu_van', {name: customer.offer_1})
             // Xu ly tu van
-            _updateCategory('dm_tu_van', {name: customer.offer_2})
+            support._updateCategory('dm_tu_van', {name: customer.offer_2})
             // Xu ly tu van
-            _updateCategory('dm_tu_van', {name: customer.offer_3})
+            support._updateCategory('dm_tu_van', {name: customer.offer_3})
             // Xu ly danh muc phu tung
-            _updateCategory('dm_phu_tung', {name: customer.equips})
+            support._updateCategory('dm_phu_tung', {name: customer.equips})
 
             // import khach hang
-            let customer_result = await _importCustomer(customer)
+            let customer_result = await support._importCustomer(customer)
 
             if (customer_result.is_error) {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -354,7 +357,7 @@ class Handler {
             }
 
             // import xe
-            let bike_result = await _importBike(customer, customer_result.khach_hang_id)
+            let bike_result = await support._importBike(customer, customer_result.khach_hang_id)
 
             if (bike_result.is_error) {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -365,7 +368,7 @@ class Handler {
 
             // import service
             if (customer_result.khach_hang_id && bike_result.xe_id) {
-                let service_result = await _importService(customer, customer_result.khach_hang_id, bike_result.xe_id)
+                let service_result = await support._importService(customer, customer_result.khach_hang_id, bike_result.xe_id)
 
                 if (service_result.status != 'OK') {
                     res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -373,10 +376,10 @@ class Handler {
                 }
 
                 // import service detail
-                _importEquip(service_result.dich_vu_id, customer.equips)
+                support._importEquip(service_result.dich_vu_id, customer.equips)
 
                 // update last service info 4 bike
-                _updateLastService4Bike(bike_result.xe_id, service_result.dich_vu_id, customer.customer_require, customer.offer_1, customer.out_date)
+                support._updateLastService4Bike(bike_result.xe_id, service_result.dich_vu_id, customer.customer_require, customer.offer_1, customer.out_date)
 
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Thành công'}))
@@ -792,7 +795,7 @@ class Handler {
         ]
 
         db.runSql(sql, params).then(goi_ra => {
-            return _updateLastCallout4Bike(feedback.xe_id, goi_ra.lastID, 3, feedback.ket_qua_goi_ra_id, feedback.note)
+            return support._updateLastCallout4Bike(feedback.xe_id, goi_ra.lastID, 3, feedback.ket_qua_goi_ra_id, feedback.note)
             .then(result => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
@@ -856,7 +859,7 @@ class Handler {
             ]
 
             return db.runSql(sql, params).then(result => {
-                return _updateLastCallout4Bike(feedback.xe_id, goi_ra.lastID, 2, feedback.y_kien_dich_vu_id, feedback.note)
+                return support._updateLastCallout4Bike(feedback.xe_id, goi_ra.lastID, 2, feedback.y_kien_dich_vu_id, feedback.note)
             }).then(result => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
@@ -960,7 +963,7 @@ class Handler {
         ]
 
         db.runSql(sql, params).then(goi_ra => {
-            return _updateLastCallout4Bike(callout.xe_id, goi_ra.lastID, callout.muc_dich_goi_ra_id, callout.ket_qua_goi_ra_id, callout.note).then(() => {
+            return support._updateLastCallout4Bike(callout.xe_id, goi_ra.lastID, callout.muc_dich_goi_ra_id, callout.ket_qua_goi_ra_id, callout.note).then(() => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
             })

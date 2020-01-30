@@ -205,4 +205,7 @@ router.post('/send-sms'
 router.get('/init-next-ktdk_date'
     , customerHanlder.initNextKtdkDate
 );
+router.get('/test'
+    , customerHanlder.test
+);
 module.exports = router;

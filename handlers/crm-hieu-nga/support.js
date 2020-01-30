@@ -448,6 +448,61 @@ async function _updateLastCallout4Bike(xe_id, goi_ra_id, muc_dich_goi_ra_id, ket
     }
 }
 
+function _updateSmsSchedule(xe_id) {
+    let sql = ``
+    let params = []
+
+    sql = `SELECT   a.id AS xe_id,
+                b.id AS sms_type_id,
+                (CASE
+                    WHEN b.TYPE LIKE 'KTDK%' OR b.TYPE = 'BDTB' OR b.TYPE = 'MUA XE'
+                    THEN
+                        strftime ('%s', date (a.buy_date, 'unixepoch', '+' || b.n_day_after || ' day'))
+                    WHEN b.TYPE = 'SINH NHAT'
+                    THEN
+                        kh.birthday
+                    WHEN b.TYPE = 'SAU 6 THANG DICH VU'
+                    THEN
+                        strftime ('%s', date (a.last_service_date, 'unixepoch', '+' || b.n_day_after || ' day'))
+                    ELSE
+                        NULL
+                END)
+                    sms_date_schedule
+            FROM   xe a, khach_hang kh, sms_config b
+            WHERE   a.id = ? AND a.khach_hang_id = kh.id`
+    params = [xe_id]
+
+    return db.getRsts(sql, params).then(sms_schedules => {
+        // console.log(sms_schedules);
+
+        for (let e of sms_schedules) {
+            db.runSql(
+                `INSERT INTO sms_schedule
+                (
+                    xe_id,
+                    sms_type_id,
+                    sms_date_schedule,
+                    create_datetime
+                )
+                VALUES
+                (
+                    ?,
+                    ?,
+                    ?,
+                    strftime('%s', datetime('now', 'localtime'))
+                )
+                ON CONFLICT(xe_id, sms_type_id)
+                DO UPDATE SET
+                    sms_date_schedule = ?,
+                    update_datetime = strftime('%s', datetime('now', 'localtime'));`,
+                [xe_id, e.sms_type_id, e.sms_date_schedule, e.sms_date_schedule]
+            )
+        }
+    }).catch(err => {
+        return err
+    })
+}
+
 module.exports = {
     _updateCategory,
     _importCustomer,
@@ -456,5 +511,6 @@ module.exports = {
     _importEquip,
     _updateLastService4Bike,
     _initNextKtdkDate,
-    _updateLastCallout4Bike
+    _updateLastCallout4Bike,
+    _updateSmsSchedule
 }
