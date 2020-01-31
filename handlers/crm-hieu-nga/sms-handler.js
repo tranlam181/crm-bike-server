@@ -98,6 +98,63 @@ class Handler {
         })
     }
 
+    getSmsList(req, res, next) {
+      let filter = req.query.filter // birthday|ktdk|thank-4-buying|after-6-month-service|range loc danh sach gi
+      let from_date = req.query.from_date
+      let to_date = req.query.to_date
+      let sql = ''
+      let params = []
+
+      switch (filter) {
+        case 'ktdk':
+          sql = `SELECT   *
+                  FROM   sms_schedule
+                WHERE
+                        sms_type_id IN (1,2,3,4,5,6,7,8)
+                        AND sms_date_schedule = strftime('%s', date('now'))
+                        AND sms_datetime IS NULL`
+          break;
+        case 'birthday':
+
+          sql = `SELECT   *
+                  FROM   sms_schedule
+                WHERE
+                        sms_type_id = 9
+                        AND strftime ('%m', sms_date_schedule, 'unixepoch') = strftime ('%m', 'now')
+                        AND strftime ('%d', sms_date_schedule, 'unixepoch') = strftime ('%d', 'now')`
+          break;
+        case 'thank-4-buying':
+
+          sql = `SELECT   *
+                  FROM   sms_schedule
+                WHERE
+                        sms_type_id = 10
+                        AND sms_date_schedule = strftime('%s', date('now'))
+                        AND sms_datetime IS NULL`
+          break;
+        case 'after-6-month-service':
+          sql = `SELECT   *
+                  FROM   sms_schedule
+                WHERE
+                        sms_type_id = 11
+                        AND sms_date_schedule = strftime('%s', date('now'))
+                        AND (sms_datetime IS NULL OR sms_datetime < sms_date_schedule)`
+          break;
+        case 'range':
+          sql = `SELECT   *
+                  FROM   sms_schedule
+                WHERE
+                        sms_type_id IN (1,2,3,4,5,6,7,8)
+                        AND sms_date_schedule >= strftime('%s', ?)
+                        AND sms_date_schedule < strftime('%s', date(?, '+1 day'))
+                        AND sms_datetime IS NULL`
+          break;
+
+        default:
+          break;
+      }
+    }
+
     async sendSmsJob() {
       // 1. Query cac sms config co thoi gian nhan tin vao thoi diem job chay
       console.log('sendSmsJob');

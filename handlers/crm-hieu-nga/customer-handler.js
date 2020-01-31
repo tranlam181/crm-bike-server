@@ -251,8 +251,7 @@ class Handler {
             let sql = ``
             let params = []
 
-            sql = `UPDATE
-                        xe
+            sql = `UPDATE xe
                     SET
                         ma_loai_xe_id = ?,
                         loai_xe_id = ?,
@@ -276,6 +275,7 @@ class Handler {
             ]
 
             await db.runSql(sql, params)
+            await support._updateSmsSchedule(xe_id)
 
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
             res.end(JSON.stringify({status:'OK', msg:'Lưu thông tin thành công'}))
@@ -363,8 +363,6 @@ class Handler {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'NOK', msg: bike_result.msg, stt:customer.A}))
             }
-
-            // console.log(customer_result, bike_result);
 
             // import service
             if (customer_result.khach_hang_id && bike_result.xe_id) {
@@ -515,7 +513,9 @@ class Handler {
                 break;
 
             case 'search':
-                    sql += ` FROM xe a , khach_hang b
+                    sql += `, strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
+                            , (select max(name) from dm_yeu_cau where id=a.last_yeu_cau_id) last_yeu_cau
+                        FROM xe a , khach_hang b
                         WHERE
                             a.khach_hang_id=b.id
                             AND (ifnull(?,'') = '' OR b.full_name_no_sign LIKE '%' || UPPER(?) || '%')
@@ -1053,6 +1053,7 @@ class Handler {
                     WHERE id=?`
 
             await db.runSql(sql, [dich_vu.lastID, service.loai_bao_duong_id, service.xe_id])
+            await support._updateSmsSchedule(service.xe_id)
 
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
             res.end(JSON.stringify({status:'OK', msg:'Lưu thông tin dịch vụ thành công'}))

@@ -208,4 +208,8 @@ router.get('/init-next-ktdk_date'
 router.get('/test'
     , customerHanlder.test
 );
+router.get('/sms/sms-list'
+    , tokenUtil.checkToken
+    , smsHanlder.getSmsList
+);
 module.exports = router;

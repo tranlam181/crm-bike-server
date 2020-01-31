@@ -237,7 +237,13 @@ async function _importBike(bike, khach_hang_id) {
         ]
 
         result = await db.runSql(sql, params)
-        return result.hasOwnProperty('lastID') ? {xe_id: result.lastID, status:'OK'} : {status:'NOK', msg:'Lỗi khi thêm mới Xe', error: result, is_error: true}
+
+        if ( result.hasOwnProperty('lastID') ) {
+            await _updateSmsSchedule(result.lastID)
+            return {xe_id: result.lastID, status:'OK'}
+        } else {
+            return {status:'NOK', msg:'Lỗi khi thêm mới Xe', error: result, is_error: true}
+        }
     } catch (err) {
         console.log(err);
 
@@ -411,7 +417,7 @@ async function _updateLastService4Bike(xe_id, dich_vu_id, customer_require, offe
             xe_id
         ]
 
-        return db.getRst(sql, params)
+        return db.getRst(sql, params).then(() => _updateSmsSchedule(xe_id))
     } catch (err) {
         throw err
     }
