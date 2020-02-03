@@ -259,62 +259,91 @@ class Handler {
     }
 
     exportCustomer(req, res, next) {
-        let type = req.query.type // active|passive|all xuat danh sach nhu the nao
+        let type = req.query.type // passive|all xuat danh sach nhu the nao
+        let loai_xe_id = req.query.loai_xe_id ? req.query.loai_xe_id : null
+        let mau_xe_id = req.query.mau_xe_id ? req.query.mau_xe_id : null
+        let quan_huyen_id = req.query.quan_huyen_id ? req.query.quan_huyen_id : null
+        let sex = req.query.sex ? req.query.sex : null
+        let nghe_nghiep_id = req.query.nghe_nghiep_id ? req.query.nghe_nghiep_id : null
         let userInfo = req.userInfo
         let params
-        let sql = `SELECT   (strftime ('%s', date ('now')) - c.last_visit_date) / 60 / 60 / 24 / 30.0 month_not_come,
-                    (CASE
-                        WHEN c.last_visit_date >= strftime ('%s', date ('now', '-6 month')) THEN 'T.xuyen'
-                        ELSE 'T.dong'
-                    END)
-                        customer_type,
-                    c.full_name,
-                    (SELECT   MAX (name) FROM dm_dia_ly WHERE province_code = c.province_code AND district_code = c.district_code AND precinct_code = c.precinct_code) AS precinct,
-                    (SELECT   MAX (name) FROM dm_dia_ly WHERE province_code = c.province_code AND district_code = c.district_code AND precinct_code = '') AS district,
-                    c.phone,
-                    (CASE WHEN c.sex = 1 THEN 'Nam' ELSE 'Nữ' END) AS sex,
-                    d.name AS bike_name,
-                    b.bike_number,
-                    strftime ('%d/%m/%Y', coalesce(a.maintance_date, c.last_visit_date), 'unixepoch') AS maintance_date,
-                    (SELECT   MAX (name) FROM dm_kieu_bao_duong WHERE id = a.kieu_bao_duong_id) AS maintance_name,
-                    a.price_wage,
-                    a.price_equip,
-                    a.maintance_detail,
-                    (SELECT   MAX (name) FROM dm_cua_hang WHERE id = c.cua_hang_id) AS shop_name,
-                    (SELECT   MAX (name) FROM dm_y_kien_mua_xe WHERE id = b.y_kien_mua_xe_id) AS buy_feedback,
-                    b.note,
-                    a.feedback AS maintance_feedback
-                FROM    khach_hang c,
-                        khach_hang_xe b,
-                        dm_loai_xe d
-                        LEFT OUTER JOIN bao_duong a ON b.bao_duong_id = a.id`
-
+        let sql = `SELECT
+                        (strftime ('%s', date ('now')) - a.last_service_date) / 60 / 60 / 24 / 30.0 month_not_come,
+                        a.warranty_number,
+                        (select max(name) from dm_ma_loai_xe where id=a.ma_loai_xe_id) ma_loai_xe,
+                        (select max(name) from dm_loai_xe where id=a.loai_xe_id) loai_xe,
+                        (select max(name) from dm_mau_xe where id=a.mau_xe_id) mau_xe,
+                        a.frame_number,
+                        a.engine_number,
+                        b.full_name,
+                        b.address,
+                        (select max(district) from dm_quan_huyen where id=b.quan_huyen_id) district,
+                        (select max(province) from dm_quan_huyen where id=b.quan_huyen_id) province,
+                        strftime ('%d/%m/%Y', b.birthday, 'unixepoch') as birthday,
+                        (CASE WHEN b.sex = 1 THEN 'Nam' ELSE 'Nữ' END) AS sex,
+                        (select max(name) from dm_nghe_nghiep where id=b.nghe_nghiep_id) nghe_nghiep,
+                        b.phone_2,
+                        b.phone,
+                        strftime ('%d/%m/%Y', a.buy_date, 'unixepoch') as buy_date,
+                        a.bike_number,
+                        (select max(name) from dm_ket_qua_goi_ra where id=a.y_kien_mua_xe_id) y_kien_mua_xe,
+                        a.note_1,
+                        (select max(name) from dm_yeu_cau where id=a.last_yeu_cau_id) last_yeu_cau,
+                        strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') as last_service_date`
         switch (type) {
-            case 'active':
-                sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
-                                AND strftime ('%s', date('now', '-6 month')) < c.last_visit_date
-                                AND c.id=b.khach_hang_id
-                                AND b.loai_xe_id = d.id
-                        ORDER BY   c.last_visit_date`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
             case 'passive':
-                sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
-                                AND (c.last_visit_date IS NULL OR strftime ('%s', date('now', '-6 month')) >= c.last_visit_date)
-                                AND c.id=b.khach_hang_id
-                                AND b.loai_xe_id = d.id
-                        ORDER BY   c.last_visit_date`
+                sql += ` FROM   xe a, khach_hang b
+                        WHERE
+                            (? IS NULL OR a.cua_hang_id=?)
+                            AND a.last_service_date < strftime ('%s', date('now', '-6 month'))
+                            AND a.khach_hang_id = b.id
+                            ORDER BY a.last_service_date`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
             case 'all':
-                sql += ` WHERE  (? IS NULL OR c.cua_hang_id=?)
-                                AND c.id=b.khach_hang_id
-                                AND b.loai_xe_id = d.id
-                        ORDER BY   c.last_visit_date`
+                sql += ` FROM   xe a, khach_hang b
+                        WHERE
+                            (? IS NULL OR a.cua_hang_id=?)
+                            AND a.khach_hang_id = b.id
+                            ORDER BY a.last_service_date`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
-            default:
+            case 'birthday':
+                sql += ` FROM   xe a, khach_hang b
+                        WHERE
+                            (? IS NULL OR a.cua_hang_id=?)
+                            AND a.khach_hang_id = b.id
+                            AND strftime ('%m', b.birthday, 'unixepoch') = strftime ('%m', 'now')
+                            AND b.address IS NOT NULL AND b.address <>''
+                            ORDER BY a.last_service_date`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
+            case 'filter':
+                sql += ` FROM   xe a, khach_hang b
+                        WHERE
+                            (? IS NULL OR a.cua_hang_id=?)
+                            AND (? IS NULL OR a.loai_xe_id=?)
+                            AND (? IS NULL OR a.mau_xe_id=?)
+                            AND a.khach_hang_id = b.id
+                            AND (? IS NULL OR b.quan_huyen_id IN (SELECT   id
+                                                                    FROM   dm_quan_huyen
+                                                                WHERE   province IN (SELECT   province
+                                                                                        FROM   dm_quan_huyen
+                                                                                        WHERE   id = ?)))
+                            AND (? IS NULL OR b.sex=?)
+                            AND (? IS NULL OR b.nghe_nghiep_id=?)
+                            ORDER BY a.last_service_date`
+                params = [
+                    userInfo.cua_hang_id, userInfo.cua_hang_id,
+                    loai_xe_id,loai_xe_id,
+                    mau_xe_id,mau_xe_id,
+                    quan_huyen_id,quan_huyen_id,
+                    sex,sex,
+                    nghe_nghiep_id,nghe_nghiep_id,
+                ]
+                break;
+            default:
+                sql = 'SELECT 1'
         }
 
         db.getRsts(sql, params).then(result => {

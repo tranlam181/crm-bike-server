@@ -15,6 +15,9 @@ const appConfigHanlder = require("../handlers/crm-hieu-nga/app-config-handler").
 router.get('/category/provinces'
     , categoryHandler.getProvinces
 );
+router.get('/category/tinhs'
+    , categoryHandler.getTinhs
+);
 router.get('/category/districts/:province_code'
     , categoryHandler.getDistricts
 );
@@ -130,9 +133,13 @@ router.put('/callouts/after-buy'
     , postHandler.jsonProcess
     , customerHanlder.updateFeedbackAfterBuy
 );
-router.get('/callouts'
+router.get('/callouts' // ?xe_id=
     , tokenUtil.checkToken
     , customerHanlder.getCallouts
+);
+router.get('/callins' // ?xe_id=
+    , tokenUtil.checkToken
+    , customerHanlder.getCallins
 );
 router.post('/callouts'
     , tokenUtil.checkToken
@@ -152,11 +159,11 @@ router.get('/services/:dich_vu_id'
     , tokenUtil.checkToken
     , customerHanlder.getService
 );
-router.get('/report-callouts'
+router.get('/report/report-callouts'
     , tokenUtil.checkToken
     , reportHanlder.reportCallout
 );
-router.get('/report-sms'
+router.get('/report/report-sms'
     , tokenUtil.checkToken
     , reportHanlder.reportSms
 );
@@ -168,7 +175,7 @@ router.get('/report-after-maintances'
     , tokenUtil.checkToken
     , reportHanlder.reportAfterMaintance
 );
-router.get('/export-customers'
+router.get('/report/export-customers' // ?type
     , tokenUtil.checkToken
     , reportHanlder.exportCustomer
 );
@@ -212,5 +219,9 @@ router.get('/test'
 router.get('/sms/sms-list'
     , tokenUtil.checkToken
     , smsHanlder.getSmsList
+);
+router.get('/sms/sms-histories' // ?xe_id=
+    , tokenUtil.checkToken
+    , smsHanlder.getSmsHistories
 );
 module.exports = router;

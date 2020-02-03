@@ -100,7 +100,7 @@ function _updateCategory(categoryName, data) {
             break;
         case 'dm_tinh_trang_xe':
             if (!data.name) return
-            sql = `INSERT OR IGNORE INTO dm_ket_qua_goi_ra (muc_dich_goi_ra_id, name) VALUES (3, ?)`
+            sql = `INSERT OR IGNORE INTO dm_ket_qua_goi_ra (is_mua_xe, name) VALUES (1, ?)`
             params = [data.name]
             break;
     }

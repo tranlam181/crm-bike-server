@@ -206,6 +206,27 @@ class Handler {
       });
     }
 
+    getSmsHistories(req, res, next) {
+      let xe_id = req.query.xe_id
+
+      if (!xe_id || xe_id=='undefined') xe_id = ''
+
+      db.getRsts(`select
+                      type,
+                      content,
+                      strftime ('%d/%m/%Y %H:%M', sms_datetime, 'unixepoch') AS sms_datetime
+                  from  sms_history
+                  where xe_id=?
+                  order by sms_history.sms_datetime`,
+                  [xe_id]
+      ).then(row => {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(row));
+      }).catch(err => {
+          res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+      });
+    }
+
     async sendSmsJob() {
       // 1. Query cac sms config co thoi gian nhan tin vao thoi diem job chay
       console.log('sendSmsJob');

@@ -1079,7 +1079,7 @@ class Handler {
                         (select max(name) from dm_nhan_vien where id=dich_vu.repaire_staff_1) as repaire_staff_1,
                         (select max(name) from dm_nhan_vien where id=dich_vu.repaire_staff_2) as repaire_staff_2,
                         (select max(name) from dm_nhan_vien where id=dich_vu.check_staff) as check_staff,
-                        (select max(id) from dm_yeu_cau where id=dich_vu.yeu_cau_id) yeu_cau,
+                        (select max(name) from dm_yeu_cau where id=dich_vu.yeu_cau_id) yeu_cau,
                         is_keep_old_equip,
                         (select max(name) from dm_tu_van where id=dich_vu.offer_1) offer_1,
                         (select max(name) from dm_tu_van where id=dich_vu.offer_2) offer_2,
@@ -1158,23 +1158,39 @@ class Handler {
         if (!xe_id || xe_id=='undefined') xe_id = ''
 
         db.getRsts(`select
-                        (select max(name) from dm_muc_dich_goi_ra where id=goi_ra.muc_dich_goi_ra_id) muc_dich_goi_ra_id,
-                        (select max(name) from dm_ket_qua_goi_ra where id=goi_ra.ket_qua_goi_ra_id AND muc_dich_goi_ra_id=goi_ra.muc_dich_goi_ra_id) ket_qua_goi_ra_id,
+                        (select max(name) from dm_muc_dich_goi_ra where id=goi_ra.muc_dich_goi_ra_id) muc_dich_goi_ra,
+                        (select max(name) from dm_ket_qua_goi_ra where id=goi_ra.ket_qua_goi_ra_id) ket_qua_goi_ra,
                         note,
                         strftime ('%d/%m/%Y', call_date, 'unixepoch') AS call_date,
                         (select max(user_name) from user where id=goi_ra.update_user) update_user
                     from  goi_ra
                     where xe_id=?
-                    order by call_date`,
+                    order by goi_ra.call_date`,
                     [xe_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
+            res.end(JSON.stringify(row));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getCallins(req, res, next) {
+        let xe_id = req.query.xe_id
+
+        if (!xe_id || xe_id=='undefined') xe_id = ''
+
+        db.getRsts(`select
+                        content,
+                        note,
+                        strftime ('%d/%m/%Y %H:%M', call_datetime, 'unixepoch') AS call_datetime
+                    from  goi_den
+                    where xe_id=?
+                    order by goi_den.call_datetime`,
+                    [xe_id]
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });

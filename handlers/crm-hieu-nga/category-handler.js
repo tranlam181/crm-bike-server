@@ -27,6 +27,19 @@ class Handler {
         });
     }
 
+    getTinhs(req, res, next) {
+        db.getRsts(`SELECT max(id) AS id, province AS name
+            FROM dm_quan_huyen
+            GROUP BY province
+            ORDER BY province`
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
     getDistricts(req, res, next) {
         let province_code = req.params.province_code
 
