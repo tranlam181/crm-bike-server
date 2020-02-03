@@ -203,6 +203,7 @@ router.post('/send-sms'
     , smsHanlder.sendSmsRequest
 );
 router.get('/init-next-ktdk_date'
+    , tokenUtil.checkToken
     , customerHanlder.initNextKtdkDate
 );
 router.get('/test'

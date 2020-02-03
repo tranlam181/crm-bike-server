@@ -218,7 +218,7 @@ async function _importBike(bike, khach_hang_id) {
                 ?,
                 ?,
                 ?,
-                (SELECT MAX(id) FROM dm_ket_qua_goi_ra WHERE muc_dich_goi_ra_id=3 AND name=?)
+                (SELECT MAX(id) FROM dm_ket_qua_goi_ra WHERE is_mua_xe=1 AND name=?)
             )`
         params = [
             bike.cua_hang_id,
@@ -478,11 +478,11 @@ function _updateSmsSchedule(xe_id) {
             WHERE   a.id = ? AND a.khach_hang_id = kh.id`
     params = [xe_id]
 
-    return db.getRsts(sql, params).then(sms_schedules => {
+    return db.getRsts(sql, params).then(async (sms_schedules) => {
         // console.log(sms_schedules);
 
         for (let e of sms_schedules) {
-            db.runSql(
+            await db.runSql(
                 `INSERT INTO sms_schedule
                 (
                     xe_id,

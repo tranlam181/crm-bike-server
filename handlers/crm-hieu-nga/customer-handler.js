@@ -291,7 +291,7 @@ class Handler {
         try {
             // console.log(customer);
             // Xu ly danh muc ma loai xe
-            support.support._updateCategory('dm_ma_loai_xe', {name: customer.bike_code})
+            support._updateCategory('dm_ma_loai_xe', {name: customer.bike_code})
             // Xu ly danh muc loai xe
             support._updateCategory('dm_loai_xe', {name: customer.bike_name})
             // Xu ly danh muc mau xe

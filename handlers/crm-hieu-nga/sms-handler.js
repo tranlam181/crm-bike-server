@@ -88,7 +88,8 @@ class Handler {
         let params = []
 
         db.getRst(sql, params).then(config => {
-          return sendSms(sms.ipphone, sms.numer, sms.content, config.link_sms_3c, config.secret_3c).then(rs => {
+          return sendSms(sms.ipphone, sms.numer, sms.content, config.link_sms_3c, config.secret_3c)
+          .then(rs => {
             sql = `INSERT INTO sms_history`
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
             res.end(JSON.stringify({status:'OK', msg: result.msg}))
@@ -102,57 +103,107 @@ class Handler {
       let filter = req.query.filter // birthday|ktdk|thank-4-buying|after-6-month-service|range loc danh sach gi
       let from_date = req.query.from_date
       let to_date = req.query.to_date
-      let sql = ''
+      let userInfo = req.userInfo
       let params = []
-
+      let sql = `SELECT
+              a.id as xe_id,
+              a.khach_hang_id,
+              (SELECT MAX(short_name) FROM dm_cua_hang where id=a.cua_hang_id) AS shop_name,
+              (SELECT MAX(name) FROM dm_loai_xe where id=a.loai_xe_id) AS bike_name,
+              a.frame_number,
+              a.engine_number,
+              a.bike_number,
+              strftime ('%d/%m/%Y', a.buy_date, 'unixepoch') AS buy_date,
+              a.warranty_number,
+              b.full_name,
+              b.phone,
+              b.phone_2,
+              strftime ('%d/%m/%Y', b.birthday, 'unixepoch') AS birthday,
+              b.sex,
+              b.address,
+              strftime ('%d/%m/%Y', s.sms_date_schedule, 'unixepoch') AS sms_date_schedule,
+              sc.type`
       switch (filter) {
         case 'ktdk':
-          sql = `SELECT   *
-                  FROM   sms_schedule
+          sql += `
+                  FROM   sms_schedule s, sms_config sc, xe a, khach_hang b
                 WHERE
-                        sms_type_id IN (1,2,3,4,5,6,7,8)
-                        AND sms_date_schedule = strftime('%s', date('now'))
-                        AND sms_datetime IS NULL`
+                        s.sms_type_id IN (1,2,3,4,5,6,7,8)
+                        AND s.sms_date_schedule = strftime('%s', date('now'))
+                        AND s.sms_datetime IS NULL
+                        AND s.sms_type_id = sc.id
+                        AND s.xe_id = a.id
+                        AND a.khach_hang_id = b.id
+                        AND (? IS NULL OR a.cua_hang_id=?)`
+          params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
           break;
         case 'birthday':
 
-          sql = `SELECT   *
-                  FROM   sms_schedule
+          sql += `
+                  FROM   sms_schedule s, sms_config sc, xe a, khach_hang b
                 WHERE
-                        sms_type_id = 9
-                        AND strftime ('%m', sms_date_schedule, 'unixepoch') = strftime ('%m', 'now')
-                        AND strftime ('%d', sms_date_schedule, 'unixepoch') = strftime ('%d', 'now')`
+                        s.sms_type_id = 9
+                        AND strftime ('%m', s.sms_date_schedule, 'unixepoch') = strftime ('%m', 'now')
+                        AND strftime ('%d', s.sms_date_schedule, 'unixepoch') = strftime ('%d', 'now')
+                        AND (s.sms_datetime IS NULL OR s.sms_datetime < strftime('%s', date('now')))
+                        AND s.sms_type_id = sc.id
+                        AND s.xe_id = a.id
+                        AND a.khach_hang_id = b.id
+                        AND (? IS NULL OR a.cua_hang_id=?)`
+          params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
           break;
         case 'thank-4-buying':
 
-          sql = `SELECT   *
-                  FROM   sms_schedule
+          sql += `
+                  FROM   sms_schedule s, sms_config sc, xe a, khach_hang b
                 WHERE
-                        sms_type_id = 10
-                        AND sms_date_schedule = strftime('%s', date('now'))
-                        AND sms_datetime IS NULL`
+                        s.sms_type_id = 10
+                        AND s.sms_date_schedule = strftime('%s', date('now'))
+                        AND s.sms_datetime IS NULL
+                        AND s.sms_type_id = sc.id
+                        AND s.xe_id = a.id
+                        AND a.khach_hang_id = b.id
+                        AND (? IS NULL OR a.cua_hang_id=?)`
+          params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
           break;
         case 'after-6-month-service':
-          sql = `SELECT   *
-                  FROM   sms_schedule
+          sql += `
+                  FROM   sms_schedule s, sms_config sc, xe a, khach_hang b
                 WHERE
-                        sms_type_id = 11
-                        AND sms_date_schedule = strftime('%s', date('now'))
-                        AND (sms_datetime IS NULL OR sms_datetime < sms_date_schedule)`
+                        s.sms_type_id = 11
+                        AND s.sms_date_schedule = strftime('%s', date('now'))
+                        AND (s.sms_datetime IS NULL OR s.sms_datetime < s.sms_date_schedule)
+                        AND s.sms_type_id = sc.id
+                        AND s.xe_id = a.id
+                        AND a.khach_hang_id = b.id
+                        AND (? IS NULL OR a.cua_hang_id=?)`
+          params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
           break;
         case 'range':
-          sql = `SELECT   *
-                  FROM   sms_schedule
+          sql += `
+                  FROM   sms_schedule s, sms_config sc, xe a, khach_hang b
                 WHERE
-                        sms_type_id IN (1,2,3,4,5,6,7,8)
-                        AND sms_date_schedule >= strftime('%s', ?)
-                        AND sms_date_schedule < strftime('%s', date(?, '+1 day'))
-                        AND sms_datetime IS NULL`
+                        s.sms_type_id IN (1,2,3,4,5,6,7,8)
+                        AND s.sms_date_schedule >= strftime('%s', ?)
+                        AND s.sms_date_schedule < strftime('%s', date(?, '+1 day'))
+                        AND s.sms_datetime IS NULL
+                        AND s.sms_type_id = sc.id
+                        AND s.xe_id = a.id
+                        AND a.khach_hang_id = b.id
+                        AND (? IS NULL OR a.cua_hang_id=?)`
+          params = [from_date, to_date, userInfo.cua_hang_id, userInfo.cua_hang_id]
           break;
 
         default:
           break;
       }
+
+      db.getRsts(sql, params).then(row => {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(row));
+      }).catch(err => {
+          res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+      });
     }
 
     async sendSmsJob() {
