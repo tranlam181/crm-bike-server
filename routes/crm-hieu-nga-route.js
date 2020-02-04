@@ -168,6 +168,10 @@ router.get('/report/report-callouts' // type&date_sta&date_end
     , tokenUtil.checkToken
     , reportHanlder.reportCallout
 );
+router.get('/report/report-callins' // type&date_sta&date_end
+    , tokenUtil.checkToken
+    , reportHanlder.reportCallin
+);
 router.get('/report/report-sms' // type&date_sta&date_end
     , tokenUtil.checkToken
     , reportHanlder.reportSms
