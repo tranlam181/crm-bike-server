@@ -488,6 +488,7 @@ class Handler {
                     FROM xe a , khach_hang b, sms_config c
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
                         AND a.next_ktdk_date <= strftime ('%s', date('now'))
+                        AND (a.last_muc_dich_goi_ra_id IS NULL OR a.last_muc_dich_goi_ra_id <> 1 OR (a.last_muc_dich_goi_ra_id = 1 AND a.last_call_date < a.next_ktdk_date))
                         AND a.count_callout_fail < 2
                         AND a.khach_hang_id=b.id
                         AND a.next_ktdk_type = c.id
@@ -497,6 +498,7 @@ class Handler {
                 break;
 
             case 'smsNotCome':
+                //AND a.sms_type_id IN (1,2,3,4,5,6,7,8,11) nhắn tin mời KTDK, BDTB, 6 thang mà chưa đến
                 sql += `, strftime ('%d/%m/%Y', a.sms_date, 'unixepoch') AS sms_date
                         , strftime ('%d/%m/%Y', a.next_ktdk_date, 'unixepoch') AS next_ktdk_date
                         , c.type as next_ktdk_type
@@ -504,7 +506,9 @@ class Handler {
                     WHERE  (? IS NULL OR a.cua_hang_id=?)
                         AND a.next_ktdk_date <= strftime ('%s', date('now'))
                         AND a.count_callout_fail < 2
-                        AND a.last_service_date < a.sms_date
+                        AND a.sms_date IS NOT NULL
+                        AND a.sms_type_id IN (1,2,3,4,5,6,7,8,11)
+                        AND (a.last_service_date IS NULL OR a.last_service_date < a.sms_date)
                         AND a.khach_hang_id=b.id
                         AND a.next_ktdk_type = c.id
                     ORDER BY a.next_ktdk_date
@@ -843,8 +847,9 @@ class Handler {
             sql = `update dich_vu
                     SET call_date=strftime('%s', datetime('now', 'localtime')),
                         y_kien_dich_vu_id=?,
-                        thai_do_nhan_vien_id=?,
                         note=?,
+                        thai_do_nhan_vien_id=?,
+                        note_thai_do=?,
                         count_callout_fail = (
                             CASE WHEN 9 = ? THEN count_callout_fail + 1
                             ELSE 0 END
@@ -852,8 +857,9 @@ class Handler {
                     WHERE id=?`
             params = [
                 feedback.y_kien_dich_vu_id,
-                feedback.thai_do_nhan_vien_id,
                 feedback.note,
+                feedback.thai_do_nhan_vien_id,
+                feedback.note_thai_do,
                 Number(feedback.y_kien_dich_vu_id),
                 feedback.dich_vu_id,
             ]
@@ -966,6 +972,40 @@ class Handler {
             return support._updateLastCallout4Bike(callout.xe_id, goi_ra.lastID, callout.muc_dich_goi_ra_id, callout.ket_qua_goi_ra_id, callout.note).then(() => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
+            })
+        })
+        .catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
+
+    addCallin(req, res, next) {
+        let callout = req.json_data
+
+        let sql = `INSERT INTO goi_den (
+                            xe_id,
+                            khach_hang_id,
+                            call_datetime,
+                            content,
+                            note)
+                    VALUES (
+                        ?,
+                        ?,
+                        strftime('%s', datetime('now', 'localtime')),
+                        ?,
+                        ?
+                    )`
+        let params = [
+            callout.xe_id,
+            callout.khach_hang_id,
+            callout.content,
+            callout.note
+        ]
+
+        db.runSql(sql, params).then(goi_ra => {
+            return support._updateLastCallout4Bike(callout.xe_id, goi_ra.lastID, callout.muc_dich_goi_ra_id, callout.ket_qua_goi_ra_id, callout.note).then(() => {
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+                res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi đến thành công'}))
             })
         })
         .catch(err => {

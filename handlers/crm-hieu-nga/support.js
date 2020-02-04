@@ -202,7 +202,8 @@ async function _importBike(bike, khach_hang_id) {
                 warranty_number,
                 note_1,
                 note_2,
-                y_kien_mua_xe_id
+                y_kien_mua_xe_id,
+                feedback_date
             )
             VALUES
             (
@@ -218,7 +219,8 @@ async function _importBike(bike, khach_hang_id) {
                 ?,
                 ?,
                 ?,
-                (SELECT MAX(id) FROM dm_ket_qua_goi_ra WHERE is_mua_xe=1 AND name=?)
+                (SELECT MAX(id) FROM dm_ket_qua_goi_ra WHERE is_mua_xe=1 AND name=?),
+                strftime('%s', ?)
             )`
         params = [
             bike.cua_hang_id,
@@ -233,7 +235,8 @@ async function _importBike(bike, khach_hang_id) {
             bike.warranty_number,
             bike.note_1,
             bike.note_2,
-            bike.y_kien_mua_xe
+            bike.y_kien_mua_xe,
+            bike.feedback_date
         ]
 
         result = await db.runSql(sql, params)

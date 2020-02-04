@@ -146,6 +146,11 @@ router.post('/callouts'
     , postHandler.jsonProcess
     , customerHanlder.addCallout
 );
+router.post('/callins'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , customerHanlder.addCallin
+);
 router.post('/services'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
@@ -159,19 +164,23 @@ router.get('/services/:dich_vu_id'
     , tokenUtil.checkToken
     , customerHanlder.getService
 );
-router.get('/report/report-callouts'
+router.get('/report/report-callouts' // type&date_sta&date_end
     , tokenUtil.checkToken
     , reportHanlder.reportCallout
 );
-router.get('/report/report-sms'
+router.get('/report/report-sms' // type&date_sta&date_end
     , tokenUtil.checkToken
     , reportHanlder.reportSms
 );
-router.get('/report-after-buys'
+router.get('/report/report-services' // type&date_sta&date_end
+    , tokenUtil.checkToken
+    , reportHanlder.reportService
+);
+router.get('/report/report-after-buys'
     , tokenUtil.checkToken
     , reportHanlder.reportAfterBuy
 );
-router.get('/report-after-maintances'
+router.get('/report/report-after-maintances'
     , tokenUtil.checkToken
     , reportHanlder.reportAfterMaintance
 );
