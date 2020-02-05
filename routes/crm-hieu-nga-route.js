@@ -10,6 +10,7 @@ const categoryHandler = require("../handlers/crm-hieu-nga/category-handler").Han
 const customerHanlder = require("../handlers/crm-hieu-nga/customer-handler").Handler;
 const reportHanlder = require("../handlers/crm-hieu-nga/report-handler").Handler;
 const smsHanlder = require("../handlers/crm-hieu-nga/sms-handler").Handler;
+const strategyHanlder = require("../handlers/crm-hieu-nga/strategy-handler").Handler;
 const appConfigHanlder = require("../handlers/crm-hieu-nga/app-config-handler").Handler;
 
 router.get('/category/provinces'
@@ -236,5 +237,18 @@ router.get('/sms/sms-list'
 router.get('/sms/sms-histories' // ?xe_id=
     , tokenUtil.checkToken
     , smsHanlder.getSmsHistories
+);
+router.post('/strategy/strategies'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , strategyHanlder.addStrategy
+);
+router.get('/strategy/strategies'
+    , tokenUtil.checkToken
+    , strategyHanlder.getStrategies
+);
+router.delete('/strategy/strategies/:strategy_id'
+    , tokenUtil.checkToken
+    , strategyHanlder.delStrategy
 );
 module.exports = router;
