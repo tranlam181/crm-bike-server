@@ -203,7 +203,7 @@ class Handler {
             case 'sum':
                 sql = ` SELECT a.name, b.count_
                         FROM  dm_tu_van a INNER JOIN
-                              (SELECT   offer_1, COUNT(1) AS count_
+                            (SELECT   offer_1, COUNT(1) AS count_
                                 FROM    dich_vu
                                 WHERE   (? IS NULL OR cua_hang_id=?)
                                         AND service_date >= strftime ('%s', ?)
@@ -254,6 +254,50 @@ class Handler {
                         AND b.khach_hang_id = c.id
                     ORDER BY   a.service_date`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                break;
+            default:
+                break;
+        }
+
+        db.getRsts(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify(result))
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
+
+    reportCallin(req, res, next) {
+        let type = req.query.type // sum|detail bao cao tong hop hoac chi tiet
+        let date_sta = req.query.date_sta
+        let date_end = req.query.date_end
+        let userInfo = req.userInfo
+        let sql
+        let params
+
+        switch (type) {
+            case 'sum':
+                sql = ` SELECT 1`
+                params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                break;
+            case 'detail':
+                sql = `SELECT   c.full_name,
+                            c.phone,
+                            (select max(name) from dm_loai_xe where id=b.loai_xe_id) AS bike_name,
+                            b.bike_number,
+                            strftime ('%d/%m %H:%M', a.call_datetime, 'unixepoch') AS call_datetime,
+                            a.content,
+                            a.note,
+                            (SELECT   MAX (short_name) FROM   dm_cua_hang WHERE   id = b.cua_hang_id) AS shop_name
+                    FROM   goi_den a, xe b, khach_hang c
+                    WHERE
+                        a.call_datetime >= strftime ('%s', ?)
+                        AND a.call_datetime < strftime ('%s', date (?, '+1 day'))
+                        AND a.xe_id = b.id
+                        AND (? IS NULL OR b.cua_hang_id=?)
+                        AND a.khach_hang_id = c.id
+                    ORDER BY   a.call_datetime`
+                params = [date_sta, date_end, userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
             default:
                 break;
@@ -402,11 +446,11 @@ class Handler {
                             ORDER BY a.last_service_date`
                 params = [
                     userInfo.cua_hang_id, userInfo.cua_hang_id,
-                    loai_xe_id,loai_xe_id,
-                    mau_xe_id,mau_xe_id,
-                    quan_huyen_id,quan_huyen_id,
-                    sex,sex,
-                    nghe_nghiep_id,nghe_nghiep_id,
+                    loai_xe_id, loai_xe_id,
+                    mau_xe_id, mau_xe_id,
+                    quan_huyen_id, quan_huyen_id,
+                    sex, sex,
+                    nghe_nghiep_id, nghe_nghiep_id,
                 ]
                 break;
             default:
