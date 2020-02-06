@@ -243,11 +243,16 @@ router.post('/strategy/strategies'
     , postHandler.jsonProcess
     , strategyHanlder.addStrategy
 );
+router.post('/strategy/import-strategy-bike'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , strategyHanlder.importStrategyBike
+);
 router.get('/strategy/strategies'
     , tokenUtil.checkToken
     , strategyHanlder.getStrategies
 );
-router.delete('/strategy/strategies/:strategy_id'
+router.delete('/strategy/strategies/:chien_dich_id'
     , tokenUtil.checkToken
     , strategyHanlder.delStrategy
 );

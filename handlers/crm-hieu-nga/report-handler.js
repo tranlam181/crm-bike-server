@@ -400,7 +400,8 @@ class Handler {
                         (select max(name) from dm_ket_qua_goi_ra where id=a.y_kien_mua_xe_id) y_kien_mua_xe,
                         a.note_1,
                         (select max(name) from dm_yeu_cau where id=a.last_yeu_cau_id) last_yeu_cau,
-                        strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') as last_service_date`
+                        strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') as last_service_date,
+                        (SELECT   MAX (short_name) FROM   dm_cua_hang WHERE   id = a.cua_hang_id) AS shop_name`
         switch (type) {
             case 'passive':
                 sql += ` FROM   xe a, khach_hang b

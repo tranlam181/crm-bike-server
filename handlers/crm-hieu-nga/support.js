@@ -503,12 +503,43 @@ function _updateSmsSchedule(xe_id) {
                 ON CONFLICT(xe_id, sms_type_id)
                 DO UPDATE SET
                     sms_date_schedule = ?,
-                    update_datetime = strftime('%s', datetime('now', 'localtime'));`,
+                    update_datetime = strftime('%s', datetime('now', 'localtime'))`,
                 [xe_id, e.sms_type_id, e.sms_date_schedule, e.sms_date_schedule]
             )
         }
     }).catch(err => {
         return err
+    })
+}
+
+function _importStrategyBike(chien_dich_id, xe_id, cua_hang_id) {
+    let sql = ``
+    let params = []
+
+    sql = `INSERT INTO chien_dich_xe
+            (
+                chien_dich_id,
+                xe_id,
+                cua_hang_id,
+                create_datetime
+            )
+            VALUES
+            (
+                ?,
+                ?,
+                ?,
+                strftime('%s', datetime('now', 'localtime'))
+            )
+            ON CONFLICT(chien_dich_id, xe_id)
+            DO UPDATE SET
+                update_datetime = strftime('%s', datetime('now', 'localtime'))`
+    params = [chien_dich_id, xe_id, cua_hang_id]
+
+    return db.runSql(sql, params).then(() => {
+        return {status:'OK'}
+    })
+    .catch(err => {
+        return {status:'NOK', msg:'Lỗi khi import xe cho chiến dịch', error: err}
     })
 }
 
@@ -521,5 +552,6 @@ module.exports = {
     _updateLastService4Bike,
     _initNextKtdkDate,
     _updateLastCallout4Bike,
-    _updateSmsSchedule
+    _updateSmsSchedule,
+    _importStrategyBike
 }
