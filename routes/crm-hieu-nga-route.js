@@ -55,6 +55,9 @@ router.get('/category/kieu-bao-duongs'
 router.get('/category/service-types'
     , categoryHandler.getServiceTypes
 );
+router.get('/category/strategy-types'
+    , categoryHandler.getStrategyTypes
+);
 router.get('/category/callout-purposes'
     , categoryHandler.getCalloutPurposes
 );
@@ -255,5 +258,9 @@ router.get('/strategy/strategies'
 router.delete('/strategy/strategies/:chien_dich_id'
     , tokenUtil.checkToken
     , strategyHanlder.delStrategy
+);
+router.get('/strategy/strategy/:chien_dich_id/callout-customers'
+    , tokenUtil.checkToken
+    , strategyHanlder.getCalloutCustomers
 );
 module.exports = router;

@@ -18,7 +18,7 @@ class Handler {
                                     dm_ket_qua_goi_ra.name AS ket_qua_goi_ra,
                                     COALESCE (b.count_, 0) AS count_
                             FROM    dm_muc_dich_goi_ra a
-                            LEFT OUTER JOIN
+                            INNER JOIN
                                 (  SELECT   muc_dich_goi_ra_id, ket_qua_goi_ra_id, COUNT (1) AS count_
                                         FROM   goi_ra a, xe b
                                     WHERE

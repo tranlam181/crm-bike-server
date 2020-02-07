@@ -20,6 +20,7 @@ class Handler {
         }
 
         sql = `INSERT INTO chien_dich(
+                      loai_chien_dich_id,
                       name,
                       date_sta,
                       date_end,
@@ -27,11 +28,18 @@ class Handler {
                     )
                     VALUES (
                       ?,
+                      ?,
                       strftime('%s', ?),
                       strftime('%s', ?),
                       ?
                     )`
-        params = [strategy.name, strategy.date_sta, strategy.date_end, removeVietnameseFromString(strategy.name)]
+        params = [
+            strategy.loai_chien_dich_id,
+           strategy.name,
+           strategy.date_sta,
+           strategy.date_end,
+           removeVietnameseFromString(strategy.name)
+        ]
 
         db.runSql(sql, params).then(() => {
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -44,12 +52,64 @@ class Handler {
     getStrategies(req, res, next) {
       let sql = `SELECT
                     id chien_dich_id,
+                    (select max(name) from dm_loai_chien_dich where id=chien_dich.loai_chien_dich_id) loai_chien_dich,
                     name,
                     strftime ('%d/%m/%Y', date_sta, 'unixepoch') as date_sta ,
                     strftime ('%d/%m/%Y', date_end, 'unixepoch') as date_end
-                FROM chien_dich ORDER BY date_sta`
+                FROM chien_dich
+                ORDER BY date_sta`
 
       db.getRsts(sql, [])
+      .then(row => {
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify(row));
+      }).catch(err => {
+          res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+      });
+    }
+
+    getCalloutCustomers(req, res, next) {
+      let chien_dich_id = req.params.chien_dich_id
+      let userInfo = req.userInfo
+
+      let sql = `SELECT
+                  (strftime ('%s', date ('now')) - a.last_service_date) / 60 / 60 / 24 / 30.0 month_not_come,
+                  a.id as xe_id,
+                  a.khach_hang_id,
+                  (SELECT MAX(short_name) FROM dm_cua_hang where id=a.cua_hang_id) AS shop_name,
+                  a.loai_xe_id,
+                  (SELECT MAX(name) FROM dm_loai_xe where id=a.loai_xe_id) AS bike_name,
+                  a.mau_xe_id,
+                  a.frame_number,
+                  a.engine_number,
+                  a.bike_number,
+                  strftime ('%d/%m/%Y', a.buy_date, 'unixepoch') AS buy_date,
+                  a.warranty_number,
+                  strftime ('%d/%m/%Y', a.last_call_date, 'unixepoch') AS last_call_date,
+                  strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date,
+                  (SELECT MAX(name) FROM dm_yeu_cau where id=a.last_yeu_cau_id) AS last_yeu_cau,
+                  b.full_name,
+                  b.phone,
+                  b.phone_2,
+                  strftime ('%d/%m/%Y', b.birthday, 'unixepoch') AS birthday,
+                  b.sex,
+                  b.job,
+                  b.province_code,
+                  b.address,
+                  (select max(name) from dm_muc_dich_goi_ra where id=a.last_muc_dich_goi_ra_id) last_muc_dich_goi_ra,
+                  (select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id) last_ket_qua_goi_ra
+                FROM chien_dich_xe cdx, xe a , khach_hang b
+                WHERE
+                    cdx.chien_dich_id = ?
+                    AND (? IS NULL OR cdx.cua_hang_id=?)
+                    AND cdx.xe_id=a.id
+                    AND a.count_callout_fail < 2
+                    AND a.khach_hang_id=b.id
+                ORDER BY a.last_call_date`
+
+      let params = [chien_dich_id, userInfo.cua_hang_id, userInfo.cua_hang_id]
+
+      db.getRsts(sql, params)
       .then(row => {
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify(row));

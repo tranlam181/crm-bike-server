@@ -542,12 +542,7 @@ class Handler {
 
         db.getRsts(sql, params).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });

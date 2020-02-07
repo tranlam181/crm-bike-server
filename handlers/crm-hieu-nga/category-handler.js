@@ -123,8 +123,16 @@ class Handler {
                     where (? = 1 AND is_ktdk = 1)
                         OR (? = 2 AND is_bd = 1)
                         OR (? = 3 AND is_mua_xe = 1)
+                        OR (? = 4 AND is_ktdk_sms = 1)
+                        OR (? = 5 AND is_telesale = 1)
                     order by order_`,
-                    [muc_dich_goi_ra_id, muc_dich_goi_ra_id, muc_dich_goi_ra_id]
+                    [
+                        muc_dich_goi_ra_id,
+                        muc_dich_goi_ra_id,
+                        muc_dich_goi_ra_id,
+                        muc_dich_goi_ra_id,
+                        muc_dich_goi_ra_id
+                    ]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row
@@ -230,19 +238,24 @@ class Handler {
         db.getRsts("select id, name from dm_dich_vu order by name", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
+            res.end(JSON.stringify(row));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
+
+    getStrategyTypes(req, res, next) {
+        db.getRsts("select id, name from dm_loai_chien_dich order by order_", []
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
     getCalloutPurposes(req, res, next) {
-        db.getRsts("select id, name FROM dm_muc_dich_goi_ra WHERE is_chien_dich IS NULL ORDER BY order_", []
+        db.getRsts("select id, name FROM dm_muc_dich_goi_ra WHERE ORDER BY order_", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(row));
