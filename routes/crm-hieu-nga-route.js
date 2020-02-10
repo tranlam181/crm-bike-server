@@ -246,6 +246,11 @@ router.post('/strategy/strategies'
     , postHandler.jsonProcess
     , strategyHanlder.addStrategy
 );
+router.post('/strategy/callouts'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , strategyHanlder.addCallout
+);
 router.post('/strategy/import-strategy-bike'
     , tokenUtil.checkToken
     , postHandler.jsonProcess

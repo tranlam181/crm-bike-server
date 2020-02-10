@@ -49,6 +49,57 @@ class Handler {
         })
     }
 
+    async addCallout(req, res, next) {
+      let callout = req.json_data
+      let sql = `INSERT INTO goi_ra (
+                      khach_hang_id,
+                      xe_id,
+                      muc_dich_goi_ra_id,
+                      ket_qua_goi_ra_id,
+                      note,
+                      call_date,
+                      update_user,
+                      create_datetime,
+                      chien_dich_id)
+              VALUES (
+                  ?,
+                  ?,
+                  ?,
+                  ?,
+                  ?,
+                  strftime('%s', datetime('now', 'localtime')),
+                  ?,
+                  strftime('%s', datetime('now', 'localtime')),
+                  ?
+              )`
+      let params = [
+        callout.khach_hang_id,
+        callout.xe_id,
+        callout.muc_dich_goi_ra_id,
+        callout.ket_qua_goi_ra_id,
+        callout.note,
+        req.userInfo.id,
+        callout.chien_dich_id
+      ]
+
+      db.runSql(sql, params).then(goi_ra => {
+          return support._updateLastCallout4Bike(
+            callout.xe_id,
+            goi_ra.lastID,
+            callout.muc_dich_goi_ra_id,
+            callout.ket_qua_goi_ra_id,
+            callout.note
+          )
+          .then(result => {
+              res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+              res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
+          })
+      })
+      .catch(err => {
+          res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+      })
+    }
+
     getStrategies(req, res, next) {
       let sql = `SELECT
                     id chien_dich_id,
@@ -73,6 +124,7 @@ class Handler {
       let userInfo = req.userInfo
 
       let sql = `SELECT
+                  cdx.chien_dich_id,
                   (strftime ('%s', date ('now')) - a.last_service_date) / 60 / 60 / 24 / 30.0 month_not_come,
                   a.id as xe_id,
                   a.khach_hang_id,
