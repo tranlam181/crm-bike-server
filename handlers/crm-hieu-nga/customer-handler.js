@@ -509,6 +509,7 @@ class Handler {
                         AND a.sms_date IS NOT NULL
                         AND a.sms_type_id IN (1,2,3,4,5,6,7,8,11)
                         AND (a.last_service_date IS NULL OR a.last_service_date < a.sms_date)
+                        AND a.sms_date <= strftime('%s', date('now'), '-7 day')
                         AND a.khach_hang_id=b.id
                         AND a.next_ktdk_type = c.id
                     ORDER BY a.next_ktdk_date
