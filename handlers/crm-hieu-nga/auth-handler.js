@@ -110,31 +110,44 @@ class Handler {
         let sql = ''
         let params = []
         let payload
-        let token
+        let token_call_3C
+        let hashed_password
 
         try {
             for (let user of users) {
                 // generate token to call 3C
-                sql = `SELECT (SELECT value FROM app_config WHERE id=4) AS link_call_3c,(SELECT value FROM app_config WHERE id=2) AS secret_3c`
+                sql = `SELECT (SELECT value FROM app_config WHERE id=4) AS link_call_3c,
+                    (SELECT value FROM app_config WHERE id=2) AS secret_3c`
                 params = []
+
                 let config = await db.getRst(sql, params)
 
                 payload = {
                     "ipphone": user.ipphone,
                 }
-                token = jwt.sign(payload, config.secret_3c, {})
+
+                token_call_3C = jwt.sign(payload, config.secret_3c, {})
+
+                if (user.password) {
+                    hashed_password = await bcrypt.hash(user.password, 10)
+                } else {
+                    hashed_password = null
+                }
 
                 sql = `UPDATE user
                         SET
                             link_3c = ?,
                             ipphone = ?,
+                            password = (CASE WHEN ? IS NULL THEN password ELSE ? END),
                             update_user = ?,
                             update_datetime = strftime('%s', datetime('now', 'localtime'))
                         WHERE
                             id = ?`
                 params = [
-                    `${config.link_call_3c}?token=${token}&number=`,
+                    `${config.link_call_3c}?token=${token_call_3C}&number=`,
                     user.ipphone,
+                    hashed_password,
+                    hashed_password,
                     req.userInfo.id,
                     user.id,
                 ]

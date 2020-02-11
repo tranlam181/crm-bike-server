@@ -474,7 +474,7 @@ class Handler {
                             AND c.service_date <= strftime ('%s', date('now', '-7 day'))
 
                             AND c.count_callout_fail < 2
-                            AND (c.offer_1 = 6 OR total_price >= 1500000)
+                            AND (c.offer_1 = 6 OR total_price >= (SELECT value FROM app_config WHERE id=6))
                             AND (c.y_kien_dich_vu_id IS NULL OR c.y_kien_dich_vu_id = 9)
                             AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY c.service_date
@@ -483,16 +483,21 @@ class Handler {
                 break;
 
             case 'ktdk':
-                sql += `, strftime ('%d/%m/%Y', a.next_ktdk_date, 'unixepoch') AS next_ktdk_date
+                sql += `, strftime ('%d/%m/%Y', ss.sms_date_schedule, 'unixepoch') AS next_ktdk_date
                         , c.type as next_ktdk_type
-                    FROM xe a , khach_hang b, sms_config c
-                    WHERE  (? IS NULL OR a.cua_hang_id=?)
-                        AND a.next_ktdk_date <= strftime ('%s', date('now'))
-                        AND (a.last_muc_dich_goi_ra_id IS NULL OR a.last_muc_dich_goi_ra_id <> 1 OR (a.last_muc_dich_goi_ra_id = 1 AND a.last_call_date < a.next_ktdk_date))
+                    FROM sms_schedule ss, xe a , khach_hang b, sms_config c
+                    WHERE
+                        ss.sms_date_schedule < strftime('%s', date('now', '+1 day'))
+                        AND ss.sms_date_schedule >= strftime('%s', date('now', '-10 day'))
+                        AND ss.sms_type_id IN (1,2,3,4,5,6,7,8)
+                        AND ( ss.call_datetime IS NULL OR ss.ket_qua_goi_ra_id = 9 )
+                        AND ss.service_date IS NULL
+                        AND ss.sms_type_id = c.id
+                        AND ss.xe_id = a.id
+                        AND (? IS NULL OR a.cua_hang_id=?)
                         AND a.count_callout_fail < 2
                         AND a.khach_hang_id=b.id
-                        AND a.next_ktdk_type = c.id
-                    ORDER BY a.next_ktdk_date
+                    ORDER BY ss.sms_date_schedule
                     LIMIT 30`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;

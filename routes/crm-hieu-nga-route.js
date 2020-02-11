@@ -32,6 +32,7 @@ router.get('/category/bike-colors'
     , categoryHandler.getBikeColors
 );
 router.get('/category/shops'
+    , tokenUtil.checkToken
     , categoryHandler.getShops
 );
 router.get('/category/equips'

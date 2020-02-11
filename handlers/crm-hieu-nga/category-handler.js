@@ -99,17 +99,26 @@ class Handler {
     }
 
     getShops(req, res, next) {
-        db.getRsts("SELECT id, name\
-            FROM dm_cua_hang\
-            ORDER BY name"
-        ).then(row => {
+        let userInfo = req.userInfo
+        let sql
+
+        if (userInfo.cua_hang_id) {
+            sql = `SELECT id, name
+                FROM dm_cua_hang
+                WHERE id=${userInfo.cua_hang_id}`
+        } else {
+            sql = `
+                SELECT '' id, '-- Hãy chọn Cửa hàng --' name
+                UNION ALL
+                SELECT id, name
+                FROM dm_cua_hang
+                ORDER BY name`
+        }
+
+
+        db.getRsts(sql).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
