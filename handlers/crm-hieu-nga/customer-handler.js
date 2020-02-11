@@ -447,7 +447,7 @@ class Handler {
                 (select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id) last_ket_qua_goi_ra`
 
         switch (filter) {
-            // AND a.buy_date >= strftime ('%s', date('now', '-30 day'))
+            // AND a.buy_date >= strftime ('%s', date('now', '-20 day'))
             case 'after10BuyDate':
                 sql += ` FROM xe a , khach_hang b
                     WHERE (a.y_kien_mua_xe_id IS NULL OR a.y_kien_mua_xe_id=9)
@@ -483,11 +483,12 @@ class Handler {
                 break;
 
             case 'ktdk':
-                sql += `, strftime ('%d/%m/%Y', ss.sms_date_schedule, 'unixepoch') AS next_ktdk_date
+                sql += `, ss.sms_type_id
+                        , strftime ('%d/%m/%Y', ss.sms_date_schedule, 'unixepoch') AS next_ktdk_date
                         , c.type as next_ktdk_type
                     FROM sms_schedule ss, xe a , khach_hang b, sms_config c
                     WHERE
-                        ss.sms_date_schedule < strftime('%s', date('now', '+1 day'))
+                        ss.sms_date_schedule < strftime('%s', date('now', '+100 day'))
                         AND ss.sms_date_schedule >= strftime('%s', date('now', '-10 day'))
                         AND ss.sms_type_id IN (1,2,3,4,5,6,7,8)
                         AND ( ss.call_datetime IS NULL OR ss.ket_qua_goi_ra_id = 9 )
