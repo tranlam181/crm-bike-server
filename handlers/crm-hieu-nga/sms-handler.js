@@ -195,13 +195,13 @@ class Handler {
           sms = await db.getRst(sql, params)
 
           try {
-            rs = await sendSms(
-              config.ipphone_sms,
-              sms.phone,
-              sms.content,
-              config.link_sms_3c,
-              config.secret_3c
-            )
+            // rs = await sendSms(
+            //   config.ipphone_sms,
+            //   sms.phone,
+            //   sms.content,
+            //   config.link_sms_3c,
+            //   config.secret_3c
+            // )
 
             e.result = "Thành công"
 

@@ -147,14 +147,16 @@ class Handler {
         switch (type) {
             case 'sum':
                 sql = `   SELECT   b.type, COUNT(1) AS count_
-                            FROM       sms_history a, sms_config b
-                            WHERE   (? IS NULL OR a.cua_hang_id=?)
-                                    AND a.sms_datetime >= strftime ('%s', ?)
+                            FROM       sms_history a, sms_config b, xe x
+                            WHERE
+                                    a.sms_datetime >= strftime ('%s', ?)
                                     AND a.sms_datetime < strftime ('%s', date (?, '+1 day'))
                                     AND a.sms_type_id = b.id
+                                    AND a.xe_id = x.id
+                                    AND (? IS NULL OR x.cua_hang_id=?)
                         GROUP BY   b.type
                         ORDER BY   b.id`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                params = [date_sta, date_end, userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
             case 'detail':
                 sql = `SELECT
@@ -170,14 +172,15 @@ class Handler {
                                 sms_config d,
                                 xe b,
                                 khach_hang c
-                        WHERE   (? IS NULL OR a.cua_hang_id=?)
-                                AND a.sms_datetime >= strftime ('%s', ?)
+                        WHERE
+                                a.sms_datetime >= strftime ('%s', ?)
                                 AND a.sms_datetime < strftime ('%s', date (?, '+1 day'))
                                 AND a.sms_type_id = d.id
                                 AND a.xe_id = b.id
+                                AND (? IS NULL OR b.cua_hang_id=?)
                                 AND a.khach_hang_id = c.id
                     ORDER BY   a.sms_datetime`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+                params = [date_sta, date_end, userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
             default:
                 break;
