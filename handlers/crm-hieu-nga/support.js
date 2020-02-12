@@ -457,6 +457,34 @@ async function _updateLastCallout4Bike(xe_id, goi_ra_id, muc_dich_goi_ra_id, ket
     }
 }
 
+function _updateServiceDate4Schedule(xe_id, offer, service_date) {
+    let sql =`INSERT INTO sms_schedule
+            (
+                xe_id,
+                sms_type_id,
+                create_datetime,
+                service_date
+            )
+            VALUES
+            (
+                ?,
+                ?,
+                strftime('%s', datetime('now', 'localtime')),
+                strftime('%s', ?)
+            )
+            ON CONFLICT(xe_id, sms_type_id)
+            DO UPDATE SET
+                update_datetime = strftime('%s', datetime('now', 'localtime')),
+                service_date = strftime('%s', ?)`
+
+    let params = [xe_id, e.sms_type_id, e.sms_date_schedule, e.sms_date_schedule]
+
+    return db.runSql(sql, params)
+    .catch(err) {
+        return err
+    }
+}
+
 function _updateSmsSchedule(xe_id) {
     let sql = ``
     let params = []
