@@ -1,3 +1,7 @@
+var RESPONSE_HEADER = {
+    "Content-Type": "application/json; charset=utf-8"
+}
+
 var capitalizeFirstLetter = (string) => {
     return string.replace(/(^|\s)\S/g, l => l.toUpperCase());
 }
@@ -29,5 +33,6 @@ var removeVietnameseFromString = (str) => {
 
 module.exports = {
     capitalizeFirstLetter,
-    removeVietnameseFromString
+    removeVietnameseFromString,
+    RESPONSE_HEADER
 }

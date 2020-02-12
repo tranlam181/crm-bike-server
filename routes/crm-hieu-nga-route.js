@@ -222,10 +222,15 @@ router.put('/app-configs'
     , postHandler.jsonProcess
     , appConfigHanlder.saveAppConfig
 );
-router.post('/send-sms'
+router.post('/sms/send-sms'
     , tokenUtil.checkToken
     , postHandler.jsonProcess
     , smsHanlder.sendSmsRequest
+);
+router.post('/sms/send-sms-list'
+    , tokenUtil.checkToken
+    , postHandler.jsonProcess
+    , smsHanlder.sendSmsList
 );
 router.get('/init-next-ktdk_date'
     , tokenUtil.checkToken

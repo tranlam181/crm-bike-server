@@ -505,20 +505,26 @@ class Handler {
 
             case 'smsNotCome':
                 //AND a.sms_type_id IN (1,2,3,4,5,6,7,8,11) nhắn tin mời KTDK, BDTB, 6 thang mà chưa đến
-                sql += `, strftime ('%d/%m/%Y', a.sms_date, 'unixepoch') AS sms_date
-                        , strftime ('%d/%m/%Y', a.next_ktdk_date, 'unixepoch') AS next_ktdk_date
+                // ss.sms_datetime <= strftime('%s', date('now'), '-7 day')
+                //         AND ss.sms_datetime >= strftime('%s', date('now'), '-17 day')
+                //         AND
+                sql += `, ss.sms_type_id
+                        , strftime ('%d/%m/%Y', ss.sms_datetime, 'unixepoch') AS sms_date
+                        , strftime ('%d/%m/%Y', ss.sms_date_schedule, 'unixepoch') AS next_ktdk_date
                         , c.type as next_ktdk_type
-                    FROM xe a , khach_hang b, sms_config c
-                    WHERE  (? IS NULL OR a.cua_hang_id=?)
-                        AND a.next_ktdk_date <= strftime ('%s', date('now'))
+                    FROM sms_schedule ss, xe a , khach_hang b, sms_config c
+                    WHERE
+                        ss.sms_datetime <= strftime('%s', date('now'), '-7 day')
+                        AND ss.sms_datetime >= strftime('%s', date('now'), '-17 day')
+                        AND ss.sms_type_id IN (1,2,3,4,5,6,7,8,11)
+                        AND ss.service_date IS NULL
+                        AND (ss.call_datetime IS NULL OR ss.call_datetime < ss.sms_datetime)
+                        AND ss.sms_type_id = c.id
+                        AND ss.xe_id = a.id
+                        AND (? IS NULL OR a.cua_hang_id=?)
                         AND a.count_callout_fail < 2
-                        AND a.sms_date IS NOT NULL
-                        AND a.sms_type_id IN (1,2,3,4,5,6,7,8,11)
-                        AND (a.last_service_date IS NULL OR a.last_service_date < a.sms_date)
-                        AND a.sms_date <= strftime('%s', date('now'), '-7 day')
                         AND a.khach_hang_id=b.id
-                        AND a.next_ktdk_type = c.id
-                    ORDER BY a.next_ktdk_date
+                    ORDER BY ss.sms_datetime
                     LIMIT 30`
                 params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
@@ -794,8 +800,8 @@ class Handler {
         let params = [
             feedback.khach_hang_id,
             feedback.xe_id,
-            3, // feedback.muc_dich_goi_ra_id,
-            feedback.ket_qua_goi_ra_id, // feedback.ket_qua_goi_ra_id,
+            feedback.muc_dich_goi_ra_id,
+            feedback.ket_qua_goi_ra_id,
             feedback.note,
             req.userInfo.id
         ]
@@ -838,8 +844,8 @@ class Handler {
         let params = [
             feedback.khach_hang_id,
             feedback.xe_id,
-            2, // feedback.muc_dich_goi_ra_id,
-            feedback.y_kien_dich_vu_id, // feedback.ket_qua_goi_ra_id,
+            feedback.muc_dich_goi_ra_id,
+            feedback.y_kien_dich_vu_id,
             feedback.note,
             req.userInfo.id,
             feedback.dich_vu_id,
@@ -971,7 +977,14 @@ class Handler {
         ]
 
         db.runSql(sql, params).then(goi_ra => {
-            return support._updateLastCallout4Bike(callout.xe_id, goi_ra.lastID, callout.muc_dich_goi_ra_id, callout.ket_qua_goi_ra_id, callout.note).then(() => {
+            return support._updateLastCallout4Bike(
+                    callout.xe_id,
+                    goi_ra.lastID,
+                    callout.muc_dich_goi_ra_id,
+                    callout.ket_qua_goi_ra_id,
+                    callout.note,
+                    callout.sms_type_id
+            ).then(() => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
                 res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
             })
