@@ -106,7 +106,8 @@ class Handler {
                     (select max(name) from dm_loai_chien_dich where id=chien_dich.loai_chien_dich_id) loai_chien_dich,
                     name,
                     strftime ('%d/%m/%Y', date_sta, 'unixepoch') as date_sta ,
-                    strftime ('%d/%m/%Y', date_end, 'unixepoch') as date_end
+                    strftime ('%d/%m/%Y', date_end, 'unixepoch') as date_end,
+                    (SELECT COUNT(1) FROM chien_dich_xe WHERE chien_dich_id=chien_dich.id) count_xe
                 FROM chien_dich
                 ORDER BY date_sta`
 

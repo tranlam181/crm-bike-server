@@ -32,174 +32,38 @@ class Handler {
         })
     }
 
-    addCustomer(req, res, next) {
-        let customer = req.json_data
-        customer.full_name_no_sign = capitalizeFirstLetter(removeVietnameseFromString(customer.full_name.trim()))
-        customer.phone = customer.phone.trim()
-        customer.province_code = customer.province_code ? customer.province_code : 'DNA'
-        if (customer.sex && !Number(customer.sex)) {
-            customer.sex = customer.sex.toUpperCase() == 'NAM' || customer.sex.toUpperCase() == '1' ? 1 : 0
-        }
-
-        // 1. check xem customer da ton tai chua, check theo [full_name, phone]
-        let sql = `SELECT MAX(id) as khach_hang_id, COUNT(1) AS count
-                    FROM khach_hang
-                    WHERE phone=?`
-        let params = []
-
-        db.getRst(sql, [customer.phone]).then(async (row) => {
-            if (row.count > 0) { // ton tai roi thi khong can them moi Khach hang
-                return {khach_hang_id: row.khach_hang_id}
-            } else { // chua ton tai thi them moi Khach hang, dong thoi them moi du lieu xe
-                // Them moi Khach hang
-                sql = `INSERT INTO khach_hang
-                        (
-                            full_name,
-                            phone,
-                            phone_2,
-                            birthday,
-                            sex,
-                            job,
-                            province_code,
-                            district_code,
-                            precinct_code,
-                            address,
-                            full_name_no_sign
-                        )
-                        VALUES
-                        (
-                            ?,
-                            ?,
-                            ?,
-                            strftime('%s',?),
-                            ?,
-                            ?,
-                            ?,
-                            ?,
-                            ?,
-                            ?,
-                            ?
-                        )`
-                let params = [
-                    customer.full_name,
-                    customer.phone,
-                    customer.phone_2,
-                    customer.birthday,
-                    customer.sex,
-                    customer.job,
-                    customer.province_code,
-                    customer.district_code,
-                    customer.precinct_code,
-                    customer.address,
-                    customer.full_name_no_sign
-                ]
-
-                let result = await db.runSql(sql, params).then(result => result).catch(err => err)
-                return result.hasOwnProperty('lastID') ? {khach_hang_id: result.lastID} : Promise.reject(result)
+    async addCustomer(req, res, next) {
+        try {
+            let customer = req.json_data
+            customer.full_name_no_sign = capitalizeFirstLetter(removeVietnameseFromString(customer.full_name.trim()))
+            customer.phone = customer.phone.trim()
+            customer.province_code = customer.province_code ? customer.province_code : 'DNA'
+            if (customer.sex && !Number(customer.sex)) {
+                customer.sex = customer.sex.toUpperCase() == 'NAM' || customer.sex.toUpperCase() == '1' ? 1 : 0
             }
-        })
-        .then(async (customerInfo) => {
-            // them du lieu xe
-            // kiem tra ton tai xe
-            let check_xe = await db.getRst(
-                `SELECT COUNT(1) AS count_ FROM xe WHERE khach_hang_id=? AND loai_xe_id=? AND frame_number=?`,
-                [customerInfo.khach_hang_id, customer.loai_xe_id, customer.frame_number,]
-            )
 
-            if (check_xe.count_ <= 0 && customer.loai_xe_id) {
-                sql = `INSERT INTO xe
-                    (
-                        cua_hang_id,
-                        khach_hang_id,
-                        loai_xe_id,
-                        mau_xe_id,
-                        frame_number,
-                        engine_number,
-                        bike_number,
-                        buy_date,
-                        warranty_number,
-                        update_user
-                    )
-                    VALUES
-                    (
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        strftime('%s',?),
-                        ?,
-                        ?
-                    )`
-                params = [
-                    customer.cua_hang_id,
-                    customerInfo.khach_hang_id,
-                    customer.loai_xe_id,
-                    customer.mau_xe_id,
-                    customer.frame_number,
-                    customer.engine_number,
-                    customer.bike_number,
-                    customer.buy_date,
-                    customer.warranty_number,
-                    req.userInfo.id
-                ]
+            // import khach hang
+            let customer_result = await support._importCustomer(customer)
 
-                return db.runSql(sql, params).then(xe_result => {
-                    // Neu xe la moi, va co' loai bao duong
-                    // Thi thuc hien them moi bao duong
-                    if (xe_result.lastID > 0 && customer.loai_bao_duong_id > 0) {
-                        sql = `INSERT INTO dich_vu
-                                (
-                                    khach_hang_id,
-                                    cua_hang_id,
-                                    loai_bao_duong_id,
-                                    xe_id,
-                                    service_date,
-                                    equips,
-                                    price_wage,
-                                    total_price,
-                                    note
-                                )
-                                VALUES
-                                (
-                                    ?,
-                                    ?,
-                                    ?,
-                                    ?,
-                                    strftime('%s', ?),
-                                    ?,
-                                    ?,
-                                    ?,
-                                    ?
-                                )`
-                        params = [
-                            customerInfo.khach_hang_id,
-                            customer.cua_hang_id,
-                            customer.loai_bao_duong_id,
-                            xe_result.lastID,
-                            customer.service_date,
-                            JSON.stringify({"name":"PHỤ TÙNG","price":Number(customer.price_equip)}),
-                            customer.price,
-                            Number(customer.price) + Number(customer.price_equip),
-                            'import excel'
-                        ]
+            if (customer_result.is_error) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+                res.end(JSON.stringify({status:'NOK', msg: customer_result.msg, stt:customer.A}))
+            }
 
-                        db.runSql(sql, params)
-                    }
+            // import xe
+            let bike_result = await support._importBike(customer, customer_result.khach_hang_id)
 
-                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                    res.end(JSON.stringify({status:'OK', msg:'Thêm xe thành công', khach_hang_id: customerInfo.khach_hang_id}))
-                })
+            if (bike_result.is_error) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+                res.end(JSON.stringify({status:'NOK', msg: bike_result.msg, stt:customer.A}))
             }
 
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'Thêm xe thành công', khach_hang_id: customerInfo.khach_hang_id}))
-        })
-        .catch(err => {
+            res.end(JSON.stringify({status:'OK', msg:'Thêm thành công', khach_hang_id: customer_result.khach_hang_id, xe_id: bike_result.xe_id}))
+
+        } catch (err) {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        })
+        }
     }
 
     async saveCustomer(req, res, next) {

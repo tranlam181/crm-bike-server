@@ -165,7 +165,7 @@ async function _importCustomer(customer) {
       customer.phone,
       customer.phone_2,
       customer.birthday,
-      customer.sex == "NAM" || customer.sex == "MALE" ? 1 : 0,
+      customer.sex == "NAM" || customer.sex == "MALE" || customer.sex == "1" ? 1 : 0,
       customer.job,
       customer.province,
       customer.district,
@@ -509,7 +509,7 @@ async function _updateLastCallout4Schedule(
   ket_qua_goi_ra_id
 ) {
   try {
-    if (sms_type_id <= 0) return null
+    if (sms_type_id <= 0) return null;
 
     let sql = `UPDATE sms_schedule
                     SET call_datetime = strftime('%s', datetime('now', 'localtime')),
@@ -678,8 +678,45 @@ function _importStrategyBike(chien_dich_id, xe_id, cua_hang_id) {
     });
 }
 
-function _updateAfterSms() {
+async function _updateAfterSms(xe_id, khach_hang_id, sms_type_id, content) {
+  try {
+    let sql = `INSERT INTO sms_history
+                (
+                    xe_id,
+                    khach_hang_id,
+                    sms_type_id,
+                    content,
+                    sms_datetime
+                )
+                VALUES
+                (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    strftime('%s', datetime('now', 'localtime'))
+                )`;
+    let params = [xe_id, khach_hang_id, sms_type_id, content];
 
+    await db.runSql(sql, params);
+
+    sql = `UPDATE   sms_schedule
+              SET   sms_datetime = strftime('%s', datetime('now', 'localtime'))
+            WHERE   xe_id = ? AND sms_type_id = ? AND sms_datetime IS NULL`;
+    params = [xe_id, sms_type_id];
+
+    await db.runSql(sql, params);
+
+    sql = `UPDATE   xe
+              SET   sms_date = strftime('%s', datetime('now', 'localtime')),
+                    sms_type_id = ?
+            WHERE   id = ?`;
+    params = [sms_type_id, xe_id];
+
+    return await db.runSql(sql, params);
+  } catch (err) {
+    return err;
+  }
 }
 
 module.exports = {

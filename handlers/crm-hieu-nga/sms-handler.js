@@ -10,7 +10,7 @@ const db = require("../../db/sqlite3/crm-hieu-nga-dao");
 const jwt = require("jsonwebtoken");
 const request = require("request");
 const UTILS = require("../../utils/utils");
-const support = require("./support")
+const support = require("./support");
 
 var sendSms = (ipphone, number, content, link_sms_3c, secret_3c) => {
   return new Promise((resol, reject) => {
@@ -106,7 +106,6 @@ class Handler {
           config.link_sms_3c,
           config.secret_3c
         ).then(rs => {
-
           sql = `INSERT INTO sms_history
                 (
                     xe_id,
@@ -128,13 +127,13 @@ class Handler {
             sms.khach_hang_id,
             sms.muc_dich_goi_ra_id,
             sms.content
-          ]
+          ];
 
           return db.runSql(sql, params).then(() => {
             res.writeHead(200, UTILS.RESPONSE_HEADER);
             res.end(JSON.stringify({ status: "OK", msg: result.msg }));
-          })
-        })
+          });
+        });
       })
       .catch(err => {
         res
@@ -145,8 +144,8 @@ class Handler {
 
   async sendSmsList(req, res, next) {
     let sms_list = req.json_data;
-    let sms
-    let rs
+    let sms;
+    let rs;
     let sql = `SELECT
                     (SELECT value FROM app_config WHERE id=3) AS link_sms_3c,
                     (SELECT value FROM app_config WHERE id=2) AS secret_3c,
@@ -154,8 +153,7 @@ class Handler {
     let params = [];
 
     db.getRst(sql, params)
-      .then(async (config) => {
-
+      .then(async config => {
         for (let e of sms_list) {
           sql = `SELECT ss.xe_id,
                         ss.sms_type_id,
@@ -179,20 +177,21 @@ class Handler {
                         dm_loai_xe lx
                 WHERE       ss.xe_id = ?
                         AND ss.sms_type_id = ?
+                        AND ss.sms_datetime IS NULL -- chua nhan
                         AND ss.xe_id = x.id
                         AND ss.sms_type_id = sc.id
                         AND x.khach_hang_id = kh.id
                         AND x.cua_hang_id = ch.id
-                        AND x.loai_xe_id = lx.id`
+                        AND x.loai_xe_id = lx.id`;
 
-          params = [
-            e.xe_id,
-            e.sms_type_id,
-            e.xe_id,
-            e.sms_type_id
-          ]
+          params = [e.xe_id, e.sms_type_id, e.xe_id, e.sms_type_id];
 
-          sms = await db.getRst(sql, params)
+          sms = await db.getRst(sql, params);
+
+          if (!sms) { // khong co ban ghi nao
+            e.result = "Đã nhắn rồi";
+            continue
+          }
 
           try {
             // rs = await sendSms(
@@ -203,41 +202,27 @@ class Handler {
             //   config.secret_3c
             // )
 
-            e.result = "Thành công"
+            e.result = "Thành công";
 
-            await db.runSql(
-              `INSERT INTO sms_history
-                (
-                    xe_id,
-                    khach_hang_id,
-                    sms_type_id,
-                    content,
-                    sms_datetime
-                )
-                VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    strftime('%s', datetime('now', 'localtime'))
-                )`,
-                [
-                  sms.xe_id,
-                  sms.khach_hang_id,
-                  sms.sms_type_id,
-                  sms.content
-                ]
-            )
-
-            await support._updateAfterSms()
+            await support._updateAfterSms(
+              sms.xe_id,
+              sms.khach_hang_id,
+              sms.sms_type_id,
+              sms.content
+            );
           } catch (err) {
-            e.result = err.msg
+            e.result = err.msg;
           }
         }
 
         res.writeHead(200, UTILS.RESPONSE_HEADER);
-        res.end(JSON.stringify({ status: "OK", msg: "Đã nhắn sms xong", sms_list: sms_list }));
+        res.end(
+          JSON.stringify({
+            status: "OK",
+            msg: "Đã nhắn sms xong",
+            sms_list: sms_list
+          })
+        );
       })
       .catch(err => {
         res
@@ -366,7 +351,8 @@ class Handler {
 
     if (!xe_id || xe_id == "undefined") xe_id = "";
 
-    db.getRsts(`
+    db.getRsts(
+      `
           SELECT
             (CASE
                 WHEN a.muc_dich_goi_ra_id IS NULL THEN b.type
