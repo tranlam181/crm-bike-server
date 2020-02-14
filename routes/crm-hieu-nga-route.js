@@ -197,6 +197,14 @@ router.get('/report/export-customers' // ?type
     , tokenUtil.checkToken
     , reportHanlder.exportCustomer
 );
+router.get('/report/report-general' // ?date_sta&date_end
+    , tokenUtil.checkToken
+    , reportHanlder.reportGeneral
+);
+router.get('/report/sync-report-daily' // ?date_sta&date_end
+    , tokenUtil.checkToken
+    , reportHanlder.syncReportDaily
+);
 router.get('/bikes/:xe_id'
     , tokenUtil.checkToken
     , customerHanlder.getBike

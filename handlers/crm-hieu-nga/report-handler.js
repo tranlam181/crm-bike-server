@@ -2,6 +2,225 @@
 
 const db = require('../../db/sqlite3/crm-hieu-nga-dao')
 
+var syncCalloutReportDaily = async (date_sta, date_end) => {
+    try {
+        let sql = ``
+        let params = []
+        let daily_reports
+
+        // bao cao goi ra hang ngay
+        sql = `SELECT   strftime ('%s', date (a.call_date, 'unixepoch')) report_date,
+                        x.cua_hang_id,
+                        COUNT (1) count_callout,
+                        COUNT (CASE WHEN ket_qua_goi_ra_id NOT IN (9, 12) THEN 1 ELSE NULL END) count_callout_ok
+                FROM   goi_ra a, xe x
+                WHERE
+                        a.call_date >= strftime('%s', ?)
+                        AND a.call_date < strftime('%s', ?) + 1 * 24 * 60 * 60
+                        AND a.xe_id = x.id
+            GROUP BY   date (a.call_date, 'unixepoch'), x.cua_hang_id`
+        params = [date_sta, date_end]
+
+        daily_reports = await db.getRsts(sql, params)
+
+        for (let e of daily_reports) {
+            await db.runSql(
+                `INSERT INTO bao_cao_ngay
+                    (
+                        report_date,
+                        cua_hang_id,
+                        count_callout,
+                        count_callout_ok
+                    )
+                    VALUES
+                    (
+                        ?,
+                        ?,
+                        ?,
+                        ?
+                    )
+                    ON CONFLICT(report_date, cua_hang_id, chien_dich_id)
+                    DO UPDATE SET
+                        count_callout = ?,
+                        count_callout_ok = ?`,
+                [
+                    e.report_date,
+                    e.cua_hang_id,
+                    e.count_callout,
+                    e.count_callout_ok,
+                    e.count_callout,
+                    e.count_callout_ok
+                ]
+            )
+        }
+
+        return {"status": "OK", "msg": "Sync báo cáo thành công"}
+    } catch (err) {
+        throw err
+    }
+}
+
+
+var syncCallinReportDaily = async (date_sta, date_end) => {
+    try {
+        let sql = ``
+        let params = []
+        let daily_reports
+
+        // bao cao goi ra hang ngay
+        sql = `SELECT   strftime ('%s', date (a.call_datetime, 'unixepoch')) report_date,
+                        x.cua_hang_id,
+                        COUNT (1) count_callin
+                FROM   goi_den a, xe x
+                WHERE
+                        a.call_datetime >= strftime('%s', ?) AND a.call_datetime < strftime('%s', ?) + 1 * 24 * 60 * 60
+                        AND a.xe_id = x.id
+            GROUP BY   date (a.call_datetime, 'unixepoch'), x.cua_hang_id`
+        params = [date_sta, date_end]
+
+        daily_reports = await db.getRsts(sql, params)
+
+        for (let e of daily_reports) {
+            await db.runSql(
+                `INSERT INTO bao_cao_ngay
+                    (
+                        report_date,
+                        cua_hang_id,
+                        count_callin
+                    )
+                    VALUES
+                    (
+                        ?,
+                        ?,
+                        ?
+                    )
+                    ON CONFLICT(report_date, cua_hang_id, chien_dich_id)
+                    DO UPDATE SET
+                        count_callin = ?`,
+                [
+                    e.report_date,
+                    e.cua_hang_id,
+                    e.count_callin,
+                    e.count_callin
+                ]
+            )
+        }
+
+        return {"status": "OK", "msg": "Sync báo cáo thành công"}
+    } catch (err) {
+        throw err
+    }
+}
+
+var syncSmsReportDaily = async (date_sta, date_end) => {
+    try {
+        let sql = ``
+        let params = []
+        let daily_reports
+
+        // bao cao goi ra hang ngay
+        sql = `SELECT   strftime ('%s', date (a.sms_datetime, 'unixepoch')) report_date,
+                        x.cua_hang_id,
+                        COUNT (1) count_sms
+                FROM   sms_history a, xe x
+                WHERE
+                    a.sms_datetime >= strftime('%s', ?)
+                    AND a.sms_datetime < strftime('%s', ?) + 1 * 24 * 60 * 60
+                    AND a.xe_id = x.id
+            GROUP BY   date (a.sms_datetime, 'unixepoch'), x.cua_hang_id`
+        params = [date_sta, date_end]
+
+        daily_reports = await db.getRsts(sql, params)
+
+        for (let e of daily_reports) {
+            await db.runSql(
+                `INSERT INTO bao_cao_ngay
+                    (
+                        report_date,
+                        cua_hang_id,
+                        count_sms
+                    )
+                    VALUES
+                    (
+                        ?,
+                        ?,
+                        ?
+                    )
+                    ON CONFLICT(report_date, cua_hang_id, chien_dich_id)
+                    DO UPDATE SET
+                        count_sms = ?`,
+                [
+                    e.report_date,
+                    e.cua_hang_id,
+                    e.count_sms,
+                    e.count_sms
+                ]
+            )
+        }
+
+        return {"status": "OK", "msg": "Sync báo cáo thành công"}
+    } catch (err) {
+        throw err
+    }
+}
+
+var syncServiceReportDaily = async (date_sta, date_end) => {
+    try {
+        let sql = ``
+        let params = []
+        let daily_reports
+
+        // bao cao goi ra hang ngay
+        sql = `SELECT   strftime ('%s', date (a.service_date, 'unixepoch')) report_date,
+                        x.cua_hang_id,
+                        COUNT (1) count_service,
+                        SUM (total_price) sum_price
+                FROM   dich_vu a, xe x
+                WHERE       a.service_date >= strftime ('%s', ?)
+                        AND a.service_date < strftime ('%s', ?) + 1 * 24 * 60 * 60
+                        AND a.xe_id = x.id
+                GROUP BY   date (a.service_date, 'unixepoch'), x.cua_hang_id`
+        params = [date_sta, date_end]
+
+        daily_reports = await db.getRsts(sql, params)
+
+        for (let e of daily_reports) {
+            await db.runSql(
+                `INSERT INTO bao_cao_ngay
+                    (
+                        report_date,
+                        cua_hang_id,
+                        count_service,
+                        sum_price
+                    )
+                    VALUES
+                    (
+                        ?,
+                        ?,
+                        ?,
+                        ?
+                    )
+                    ON CONFLICT(report_date, cua_hang_id, chien_dich_id)
+                    DO UPDATE SET
+                        count_service = ?,
+                        count_sms = ?`,
+                [
+                    e.report_date,
+                    e.cua_hang_id,
+                    e.count_service,
+                    e.sum_price,
+                    e.count_service,
+                    e.sum_price,
+                ]
+            )
+        }
+
+        return {"status": "OK", "msg": "Sync báo cáo thành công"}
+    } catch (err) {
+        throw err
+    }
+}
+
 class Handler {
 
     reportCallout(req, res, next) {
@@ -204,9 +423,9 @@ class Handler {
 
         switch (type) {
             case 'sum':
-                sql = ` SELECT a.name, b.count_
+                sql = ` SELECT a.name, b.count_, b.total_price
                         FROM  dm_tu_van a INNER JOIN
-                            (SELECT   offer_1, COUNT(1) AS count_
+                            (SELECT   offer_1, COUNT(1) AS count_, SUM(total_price) total_price
                                 FROM    dich_vu
                                 WHERE   (? IS NULL OR cua_hang_id=?)
                                         AND service_date >= strftime ('%s', ?)
@@ -372,6 +591,39 @@ class Handler {
         })
     }
 
+    reportGeneral(req, res, next) {
+        let date_sta = req.query.date_sta
+        let date_end = req.query.date_end
+        let userInfo = req.userInfo
+        let sql
+        let params
+
+        sql = `SELECT   strftime ('%d/%m/%Y', a.report_date, 'unixepoch') as report_date,
+                        (SELECT   MAX (name) FROM dm_cua_hang WHERE id = a.cua_hang_id) AS shop_name,
+                        a.count_callout,
+                        a.count_callout_ok,
+                        round((a.count_callout_ok * 100.0 / a.count_callout),2) count_callout_ok_percent,
+                        a.count_callin,
+                        a.count_sms,
+                        a.count_service,
+                        round((a.count_service * 100.0 / a.count_callout),2) count_service_percent,
+                        a.sum_price
+                FROM    bao_cao_ngay a
+                WHERE   (? IS NULL OR a.cua_hang_id=?)
+                        AND a.report_date >= strftime ('%s', ?)
+                        AND a.report_date < strftime ('%s', date (?, '+1 day'))
+            ORDER BY   a.cua_hang_id, a.report_date`
+        params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+
+
+        db.getRsts(sql, params).then(result => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify(result))
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        })
+    }
+
     exportCustomer(req, res, next) {
         let type = req.query.type // passive|all xuat danh sach nhu the nao
         let loai_xe_id = req.query.loai_xe_id ? req.query.loai_xe_id : null
@@ -467,6 +719,26 @@ class Handler {
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
+    }
+
+    async syncReportDaily(req, res, next) {
+        try {
+            let date_sta = req.query.date_sta
+            let date_end = req.query.date_end
+
+            await syncCalloutReportDaily(date_sta, date_end)
+
+            await syncCallinReportDaily(date_sta, date_end)
+
+            await syncSmsReportDaily(date_sta, date_end)
+
+            await syncServiceReportDaily(date_sta, date_end)
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({"status": "OK", "msg": "Tổng hợp báo cáo thành công"}))
+        } catch (err) {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        }
     }
 }
 
