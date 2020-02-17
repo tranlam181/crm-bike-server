@@ -23,23 +23,25 @@ var sendSms = (ipphone, number, content, link_sms_3c, secret_3c) => {
       expiresIn: 1 * 86400 // sec ~ 1day
     });
 
-    request.post(
-      link_sms_3c,
-      {
-        json: {
-          token: token
-        }
-      },
-      (error, res, body) => {
-        if (error) {
-          reject(error);
-        } else if (body.code == "errors") {
-          reject({ status: "NOK", msg: body.message });
-        } else {
-          resol({ status: "OK", msg: body.message });
-        }
-      }
-    );
+    resol({ status: "OK", msg: "Nhắn thành công" });
+
+    // request.post(
+    //   link_sms_3c,
+    //   {
+    //     json: {
+    //       token: token
+    //     }
+    //   },
+    //   (error, res, body) => {
+    //     if (error) {
+    //       reject(error);
+    //     } else if (body.code == "errors") {
+    //       reject({ status: "NOK", msg: body.message });
+    //     } else {
+    //       resol({ status: "OK", msg: body.message });
+    //     }
+    //   }
+    // );
   });
 };
 
@@ -101,38 +103,23 @@ class Handler {
       .then(config => {
         return sendSms(
           config.ipphone_sms,
-          sms.numer,
+          sms.number,
           sms.content,
           config.link_sms_3c,
           config.secret_3c
         ).then(rs => {
-          sql = `INSERT INTO sms_history
-                (
-                    xe_id,
-                    khach_hang_id,
-                    muc_dich_goi_ra_id,
-                    content,
-                    sms_datetime
-                )
-                VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    strftime('%s', datetime('now', 'localtime'))
-                )`;
-          params = [
-            sms.xe_id,
-            sms.khach_hang_id,
-            sms.muc_dich_goi_ra_id,
-            sms.content
-          ];
-
-          return db.runSql(sql, params).then(() => {
-            res.writeHead(200, UTILS.RESPONSE_HEADER);
-            res.end(JSON.stringify({ status: "OK", msg: result.msg }));
-          });
+          return support
+            ._updateAfterSms(
+              sms.xe_id,
+              sms.khach_hang_id,
+              null,
+              sms.content,
+              sms.chien_dich_id
+            )
+            .then(() => {
+              res.writeHead(200, UTILS.RESPONSE_HEADER);
+              res.end(JSON.stringify({ status: "OK", msg: rs.msg }));
+            });
         });
       })
       .catch(err => {
@@ -145,7 +132,6 @@ class Handler {
   async sendSmsList(req, res, next) {
     let sms_list = req.json_data;
     let sms;
-    let rs;
     let sql = `SELECT
                     (SELECT value FROM app_config WHERE id=3) AS link_sms_3c,
                     (SELECT value FROM app_config WHERE id=2) AS secret_3c,
@@ -188,19 +174,20 @@ class Handler {
 
           sms = await db.getRst(sql, params);
 
-          if (!sms) { // khong co ban ghi nao
+          if (!sms) {
+            // khong co ban ghi nao
             e.result = "Đã nhắn rồi";
-            continue
+            continue;
           }
 
           try {
-            // rs = await sendSms(
-            //   config.ipphone_sms,
-            //   sms.phone,
-            //   sms.content,
-            //   config.link_sms_3c,
-            //   config.secret_3c
-            // )
+            await sendSms(
+              config.ipphone_sms,
+              sms.phone,
+              sms.content,
+              config.link_sms_3c,
+              config.secret_3c
+            );
 
             e.result = "Thành công";
 
@@ -208,7 +195,8 @@ class Handler {
               sms.xe_id,
               sms.khach_hang_id,
               sms.sms_type_id,
-              sms.content
+              sms.content,
+              0
             );
           } catch (err) {
             e.result = err.msg;

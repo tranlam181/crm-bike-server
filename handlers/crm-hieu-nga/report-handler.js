@@ -29,6 +29,7 @@ var syncCalloutReportDaily = async (date_sta, date_end) => {
                     (
                         report_date,
                         cua_hang_id,
+                        chien_dich_id,
                         count_callout,
                         count_callout_ok
                     )
@@ -36,6 +37,7 @@ var syncCalloutReportDaily = async (date_sta, date_end) => {
                     (
                         ?,
                         ?,
+                        0,
                         ?,
                         ?
                     )
@@ -86,12 +88,14 @@ var syncCallinReportDaily = async (date_sta, date_end) => {
                     (
                         report_date,
                         cua_hang_id,
+                        chien_dich_id,
                         count_callin
                     )
                     VALUES
                     (
                         ?,
                         ?,
+                        0,
                         ?
                     )
                     ON CONFLICT(report_date, cua_hang_id, chien_dich_id)
@@ -138,12 +142,14 @@ var syncSmsReportDaily = async (date_sta, date_end) => {
                     (
                         report_date,
                         cua_hang_id,
+                        chien_dich_id,
                         count_sms
                     )
                     VALUES
                     (
                         ?,
                         ?,
+                        0,
                         ?
                     )
                     ON CONFLICT(report_date, cua_hang_id, chien_dich_id)
@@ -190,6 +196,7 @@ var syncServiceReportDaily = async (date_sta, date_end) => {
                     (
                         report_date,
                         cua_hang_id,
+                        chien_dich_id,
                         count_service,
                         sum_price
                     )
@@ -197,6 +204,7 @@ var syncServiceReportDaily = async (date_sta, date_end) => {
                     (
                         ?,
                         ?,
+                        0,
                         ?,
                         ?
                     )

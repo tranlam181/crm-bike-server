@@ -282,4 +282,20 @@ router.get('/strategy/strategy/:chien_dich_id/callout-customers'
     , tokenUtil.checkToken
     , strategyHanlder.getCalloutCustomers
 );
+router.get('/strategy/report-callouts' // chien_dich_id,type,date_sta,date_end
+    , tokenUtil.checkToken
+    , strategyHanlder.reportCallout
+);
+router.get('/strategy/report-sms' // chien_dich_id,type,date_sta,date_end
+    , tokenUtil.checkToken
+    , strategyHanlder.reportSms
+);
+router.get('/strategy/sync-report-daily' // chien_dich_id,date_sta,date_end
+    , tokenUtil.checkToken
+    , strategyHanlder.syncReportDaily
+);
+router.get('/strategy/report-general' // chien_dich_id,date_sta&date_end
+    , tokenUtil.checkToken
+    , strategyHanlder.reportGeneral
+);
 module.exports = router;

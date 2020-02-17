@@ -165,7 +165,9 @@ async function _importCustomer(customer) {
       customer.phone,
       customer.phone_2,
       customer.birthday,
-      customer.sex == "NAM" || customer.sex == "MALE" || customer.sex == "1" ? 1 : 0,
+      customer.sex == "NAM" || customer.sex == "MALE" || customer.sex == "1"
+        ? 1
+        : 0,
       customer.job,
       customer.province,
       customer.district,
@@ -641,7 +643,7 @@ function _updateSmsSchedule(xe_id) {
     });
 }
 
-function _importStrategyBike(chien_dich_id, xe_id, cua_hang_id) {
+function _importStrategyBike(chien_dich_id, xe_id) {
   let sql = ``;
   let params = [];
 
@@ -649,12 +651,10 @@ function _importStrategyBike(chien_dich_id, xe_id, cua_hang_id) {
             (
                 chien_dich_id,
                 xe_id,
-                cua_hang_id,
                 create_datetime
             )
             VALUES
             (
-                ?,
                 ?,
                 ?,
                 strftime('%s', datetime('now', 'localtime'))
@@ -662,7 +662,7 @@ function _importStrategyBike(chien_dich_id, xe_id, cua_hang_id) {
             ON CONFLICT(chien_dich_id, xe_id)
             DO UPDATE SET
                 update_datetime = strftime('%s', datetime('now', 'localtime'))`;
-  params = [chien_dich_id, xe_id, cua_hang_id];
+  params = [chien_dich_id, xe_id];
 
   return db
     .runSql(sql, params)
@@ -678,15 +678,23 @@ function _importStrategyBike(chien_dich_id, xe_id, cua_hang_id) {
     });
 }
 
-async function _updateAfterSms(xe_id, khach_hang_id, sms_type_id, content) {
+async function _updateAfterSms(
+  xe_id,
+  khach_hang_id,
+  sms_type_id,
+  content,
+  chien_dich_id
+) {
   try {
+    let rs;
     let sql = `INSERT INTO sms_history
                 (
                     xe_id,
                     khach_hang_id,
                     sms_type_id,
                     content,
-                    sms_datetime
+                    sms_datetime,
+                    chien_dich_id
                 )
                 VALUES
                 (
@@ -694,11 +702,16 @@ async function _updateAfterSms(xe_id, khach_hang_id, sms_type_id, content) {
                     ?,
                     ?,
                     ?,
-                    strftime('%s', datetime('now', 'localtime'))
+                    strftime('%s', datetime('now', 'localtime')),
+                    ?
                 )`;
-    let params = [xe_id, khach_hang_id, sms_type_id, content];
+    let params = [xe_id, khach_hang_id, sms_type_id, content, chien_dich_id];
 
-    await db.runSql(sql, params);
+    rs = await db.runSql(sql, params);
+
+    if (!sms_type_id) {
+      return rs;
+    }
 
     sql = `UPDATE   sms_schedule
               SET   sms_datetime = strftime('%s', datetime('now', 'localtime'))
