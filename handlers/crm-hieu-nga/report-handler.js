@@ -203,7 +203,7 @@ var syncServiceReportDaily = async (date_sta, date_end) => {
                     ON CONFLICT(report_date, cua_hang_id, chien_dich_id)
                     DO UPDATE SET
                         count_service = ?,
-                        count_sms = ?`,
+                        sum_price = ?`,
                 [
                     e.report_date,
                     e.cua_hang_id,
@@ -592,6 +592,7 @@ class Handler {
     }
 
     reportGeneral(req, res, next) {
+        let cua_hang_id = req.query.cua_hang_id ? req.query.cua_hang_id : null
         let date_sta = req.query.date_sta
         let date_end = req.query.date_end
         let userInfo = req.userInfo
@@ -613,7 +614,7 @@ class Handler {
                         AND a.report_date >= strftime ('%s', ?)
                         AND a.report_date < strftime ('%s', date (?, '+1 day'))
             ORDER BY   a.cua_hang_id, a.report_date`
-        params = [userInfo.cua_hang_id, userInfo.cua_hang_id, date_sta, date_end]
+        params = [cua_hang_id, cua_hang_id, date_sta, date_end]
 
 
         db.getRsts(sql, params).then(result => {
