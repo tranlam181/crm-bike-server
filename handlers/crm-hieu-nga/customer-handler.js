@@ -311,14 +311,14 @@ class Handler {
                 (select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id) last_ket_qua_goi_ra`
 
         switch (filter) {
-            // AND a.buy_date >= strftime ('%s', date('now', '-20 day'))
+
             case 'after10BuyDate':
                 sql += ` FROM xe a , khach_hang b
                     WHERE (a.y_kien_mua_xe_id IS NULL OR a.y_kien_mua_xe_id=9)
                         AND a.count_callout_fail < 2
                         AND (? IS NULL OR a.cua_hang_id=?)
                         AND a.buy_date <= strftime ('%s', date('now', '-10 day'))
-
+                        AND a.buy_date >= strftime ('%s', date('now', '-20 day'))
                         AND a.khach_hang_id=b.id
                     ORDER BY a.buy_date
                     LIMIT 30`
@@ -326,7 +326,7 @@ class Handler {
                 break;
 
             case 'afterMaintanceDate':
-                    // AND c.service_date >= strftime ('%s', date('now', '-17 day'))
+
                 sql += `    ,c.id AS dich_vu_id
                             ,strftime ('%d/%m/%Y', c.service_date, 'unixepoch') AS service_date
                             ,(select max(name) from dm_yeu_cau where id=c.yeu_cau_id) yeu_cau
@@ -336,7 +336,7 @@ class Handler {
                         WHERE a.khach_hang_id=b.id
                             AND a.id=c.xe_id
                             AND c.service_date <= strftime ('%s', date('now', '-7 day'))
-
+                            AND c.service_date >= strftime ('%s', date('now', '-17 day'))
                             AND c.count_callout_fail < 2
                             AND (c.offer_1 = 6 OR total_price >= (SELECT value FROM app_config WHERE id=6))
                             AND (c.y_kien_dich_vu_id IS NULL OR c.y_kien_dich_vu_id = 9)
@@ -368,10 +368,6 @@ class Handler {
                 break;
 
             case 'smsNotCome':
-                //AND a.sms_type_id IN (1,2,3,4,5,6,7,8,11) nhắn tin mời KTDK, BDTB, 6 thang mà chưa đến
-                // ss.sms_datetime <= strftime('%s', date('now'), '-7 day')
-                //         AND ss.sms_datetime >= strftime('%s', date('now'), '-17 day')
-                //         AND
                 sql += `, ss.sms_type_id
                         , strftime ('%d/%m/%Y', ss.sms_datetime, 'unixepoch') AS sms_date
                         , strftime ('%d/%m/%Y', ss.sms_date_schedule, 'unixepoch') AS next_ktdk_date
@@ -515,12 +511,7 @@ class Handler {
                     ORDER BY d.book_date DESC", [khach_hang_id, khach_hang_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
@@ -544,12 +535,7 @@ class Handler {
                     LIMIT 5", [khach_hang_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
@@ -581,12 +567,7 @@ class Handler {
                 WHERE a.id = ? AND a.khach_hang_id = b.id AND a.loai_xe_id = c.id`, [khach_hang_xe_id, khach_hang_xe_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
@@ -609,12 +590,7 @@ class Handler {
             WHERE a.id = ? AND a.khach_hang_xe_id = b.id AND b.khach_hang_id = c.id AND b.loai_xe_id = d.id", [bao_duong_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
@@ -629,12 +605,7 @@ class Handler {
                     ORDER BY b.name_no_sign", [bao_duong_id]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
+            res.end(JSON.stringify(row));
         }).catch(err => {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
