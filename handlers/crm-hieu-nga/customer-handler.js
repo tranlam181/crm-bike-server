@@ -438,7 +438,8 @@ class Handler {
                     sex AS sex_edit,
                     CASE sex WHEN 0 THEN 'Nữ' WHEN '1' THEN 'Nam' ELSE '' END AS sex,
                     (select max(name) from dm_nghe_nghiep where id=a.nghe_nghiep_id) AS nghe_nghiep,
-                    address
+                    address,
+                    full_name_no_sign
             FROM khach_hang a
             WHERE id=?`, [khach_hang_id]
         ).then(row => {
@@ -460,6 +461,7 @@ class Handler {
                     loai_xe_id,
                     mau_xe_id,
                     (SELECT MAX(name) FROM dm_cua_hang where id=xe.cua_hang_id) AS shop_name,
+                    (SELECT MAX(address) FROM dm_cua_hang where id=xe.cua_hang_id) AS shop_address,
                     (SELECT MAX(name) FROM dm_ma_loai_xe where id=xe.ma_loai_xe_id) AS bike_type,
                     (SELECT MAX(name) FROM dm_loai_xe where id=xe.loai_xe_id) AS bike_name,
                     (SELECT MAX(name) FROM dm_mau_xe where id=xe.mau_xe_id) AS bike_color,

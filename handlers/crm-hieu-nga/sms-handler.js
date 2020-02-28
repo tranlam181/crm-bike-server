@@ -114,7 +114,8 @@ class Handler {
               sms.khach_hang_id,
               null,
               sms.content,
-              sms.chien_dich_id
+              sms.chien_dich_id,
+              sms.muc_dich_goi_ra_id
             )
             .then(() => {
               res.writeHead(200, UTILS.RESPONSE_HEADER);
@@ -196,7 +197,8 @@ class Handler {
               sms.khach_hang_id,
               sms.sms_type_id,
               sms.content,
-              0
+              0, // chien dich id
+              sms.muc_dich_goi_ra_id
             );
           } catch (err) {
             e.result = err.msg;

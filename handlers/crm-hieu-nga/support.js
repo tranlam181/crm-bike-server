@@ -683,14 +683,17 @@ async function _updateAfterSms(
   khach_hang_id,
   sms_type_id,
   content,
-  chien_dich_id
+  chien_dich_id,
+  muc_dich_goi_ra_id
 ) {
   try {
+    chien_dich_id = chien_dich_id ? chien_dich_id : 0;
     let rs;
     let sql = `INSERT INTO sms_history
                 (
                     xe_id,
                     khach_hang_id,
+                    muc_dich_goi_ra_id,
                     sms_type_id,
                     content,
                     sms_datetime,
@@ -702,10 +705,18 @@ async function _updateAfterSms(
                     ?,
                     ?,
                     ?,
+                    ?,
                     strftime('%s', datetime('now', 'localtime')),
                     ?
                 )`;
-    let params = [xe_id, khach_hang_id, sms_type_id, content, chien_dich_id];
+    let params = [
+      xe_id,
+      khach_hang_id,
+      muc_dich_goi_ra_id,
+      sms_type_id,
+      content,
+      chien_dich_id
+    ];
 
     rs = await db.runSql(sql, params);
 
@@ -728,6 +739,8 @@ async function _updateAfterSms(
 
     return await db.runSql(sql, params);
   } catch (err) {
+    console.log(err);
+
     return err;
   }
 }

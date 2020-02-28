@@ -16,6 +16,9 @@ const appConfigHanlder = require("../handlers/crm-hieu-nga/app-config-handler").
 router.get('/category/provinces'
     , categoryHandler.getProvinces
 );
+router.get('/category/sms-types'
+    , categoryHandler.getSmsTypes
+);
 router.get('/category/tinhs'
     , categoryHandler.getTinhs
 );

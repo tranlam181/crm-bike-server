@@ -312,6 +312,16 @@ class Handler {
             res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
+
+    getSmsTypes(req, res, next) {
+        db.getRsts("select id, type, content from sms_config ORDER BY id", []
+        ).then(row => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(row));
+        }).catch(err => {
+            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+        });
+    }
 }
 
 module.exports = {
