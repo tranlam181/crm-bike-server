@@ -4,15 +4,14 @@ const db = require("../../db/sqlite3/crm-hieu-nga-dao");
 const { removeVietnameseFromString } = require("../../utils/utils");
 const support = require("./support");
 
-
 var syncCalloutReportDaily = async (chien_dich_id, date_sta, date_end) => {
   try {
-      let sql = ``
-      let params = []
-      let daily_reports
+    let sql = ``;
+    let params = [];
+    let daily_reports;
 
-      // bao cao goi ra hang ngay
-      sql = `SELECT   strftime ('%s', date (a.call_date, 'unixepoch')) report_date,
+    // bao cao goi ra hang ngay
+    sql = `SELECT   strftime ('%s', date (a.call_date, 'unixepoch')) report_date,
                       x.cua_hang_id,
                       a.chien_dich_id,
                       COUNT (1) count_callout,
@@ -23,14 +22,14 @@ var syncCalloutReportDaily = async (chien_dich_id, date_sta, date_end) => {
                       AND a.call_date >= strftime('%s', ?)
                       AND a.call_date < strftime('%s', ?) + 1 * 24 * 60 * 60
                       AND a.xe_id = x.id
-          GROUP BY   date (a.call_date, 'unixepoch'), x.cua_hang_id, a.chien_dich_id`
-      params = [chien_dich_id, date_sta, date_end]
+          GROUP BY   date (a.call_date, 'unixepoch'), x.cua_hang_id, a.chien_dich_id`;
+    params = [chien_dich_id, date_sta, date_end];
 
-      daily_reports = await db.getRsts(sql, params)
+    daily_reports = await db.getRsts(sql, params);
 
-      for (let e of daily_reports) {
-          await db.runSql(
-              `INSERT INTO bao_cao_ngay
+    for (let e of daily_reports) {
+      await db.runSql(
+        `INSERT INTO bao_cao_ngay
                   (
                       report_date,
                       cua_hang_id,
@@ -50,32 +49,32 @@ var syncCalloutReportDaily = async (chien_dich_id, date_sta, date_end) => {
                   DO UPDATE SET
                       count_callout = ?,
                       count_callout_ok = ?`,
-              [
-                  e.report_date,
-                  e.cua_hang_id,
-                  e.chien_dich_id,
-                  e.count_callout,
-                  e.count_callout_ok,
-                  e.count_callout,
-                  e.count_callout_ok
-              ]
-          )
-      }
+        [
+          e.report_date,
+          e.cua_hang_id,
+          e.chien_dich_id,
+          e.count_callout,
+          e.count_callout_ok,
+          e.count_callout,
+          e.count_callout_ok
+        ]
+      );
+    }
 
-      return {"status": "OK", "msg": "Sync báo cáo thành công"}
+    return { status: "OK", msg: "Sync báo cáo thành công" };
   } catch (err) {
-      throw err
+    throw err;
   }
-}
+};
 
 var syncSmsReportDaily = async (chien_dich_id, date_sta, date_end) => {
   try {
-      let sql = ``
-      let params = []
-      let daily_reports
+    let sql = ``;
+    let params = [];
+    let daily_reports;
 
-      // bao cao goi ra hang ngay
-      sql = `SELECT   strftime ('%s', date (a.sms_datetime, 'unixepoch')) report_date,
+    // bao cao goi ra hang ngay
+    sql = `SELECT   strftime ('%s', date (a.sms_datetime, 'unixepoch')) report_date,
                       x.cua_hang_id,
                       a.chien_dich_id,
                       COUNT (1) count_sms
@@ -85,14 +84,14 @@ var syncSmsReportDaily = async (chien_dich_id, date_sta, date_end) => {
                   AND a.sms_datetime >= strftime('%s', ?)
                   AND a.sms_datetime < strftime('%s', ?) + 1 * 24 * 60 * 60
                   AND a.xe_id = x.id
-          GROUP BY   date (a.sms_datetime, 'unixepoch'), x.cua_hang_id, a.chien_dich_id`
-      params = [chien_dich_id, date_sta, date_end]
+          GROUP BY   date (a.sms_datetime, 'unixepoch'), x.cua_hang_id, a.chien_dich_id`;
+    params = [chien_dich_id, date_sta, date_end];
 
-      daily_reports = await db.getRsts(sql, params)
+    daily_reports = await db.getRsts(sql, params);
 
-      for (let e of daily_reports) {
-          await db.runSql(
-              `INSERT INTO bao_cao_ngay
+    for (let e of daily_reports) {
+      await db.runSql(
+        `INSERT INTO bao_cao_ngay
                   (
                       report_date,
                       cua_hang_id,
@@ -109,30 +108,30 @@ var syncSmsReportDaily = async (chien_dich_id, date_sta, date_end) => {
                   ON CONFLICT(report_date, cua_hang_id, chien_dich_id)
                   DO UPDATE SET
                       count_sms = ?`,
-              [
-                  e.report_date,
-                  e.cua_hang_id,
-                  e.chien_dich_id,
-                  e.count_sms,
-                  e.count_sms
-              ]
-          )
-      }
+        [
+          e.report_date,
+          e.cua_hang_id,
+          e.chien_dich_id,
+          e.count_sms,
+          e.count_sms
+        ]
+      );
+    }
 
-      return {"status": "OK", "msg": "Sync báo cáo thành công"}
+    return { status: "OK", msg: "Sync báo cáo thành công" };
   } catch (err) {
-      throw err
+    throw err;
   }
-}
+};
 
 var syncServiceReportDaily = async (chien_dich_id, date_sta, date_end) => {
   try {
-      let sql = ``
-      let params = []
-      let daily_reports
+    let sql = ``;
+    let params = [];
+    let daily_reports;
 
-      // bao cao goi ra hang ngay
-      sql = `SELECT   strftime ('%s', date (a.service_date, 'unixepoch')) report_date,
+    // bao cao goi ra hang ngay
+    sql = `SELECT   strftime ('%s', date (a.service_date, 'unixepoch')) report_date,
                       x.cua_hang_id,
                       cx.chien_dich_id,
                       COUNT (1) count_service,
@@ -142,14 +141,14 @@ var syncServiceReportDaily = async (chien_dich_id, date_sta, date_end) => {
                       AND a.service_date < strftime ('%s', ?) + 1 * 24 * 60 * 60
                       AND a.xe_id = x.id
                       AND a.xe_id = cx.xe_id
-              GROUP BY   date (a.service_date, 'unixepoch'), x.cua_hang_id, cx.chien_dich_id`
-      params = [chien_dich_id, date_sta, date_end]
+              GROUP BY   date (a.service_date, 'unixepoch'), x.cua_hang_id, cx.chien_dich_id`;
+    params = [chien_dich_id, date_sta, date_end];
 
-      daily_reports = await db.getRsts(sql, params)
+    daily_reports = await db.getRsts(sql, params);
 
-      for (let e of daily_reports) {
-          await db.runSql(
-              `INSERT INTO bao_cao_ngay
+    for (let e of daily_reports) {
+      await db.runSql(
+        `INSERT INTO bao_cao_ngay
                   (
                       report_date,
                       cua_hang_id,
@@ -169,23 +168,23 @@ var syncServiceReportDaily = async (chien_dich_id, date_sta, date_end) => {
                   DO UPDATE SET
                       count_service = ?,
                       sum_price = ?`,
-              [
-                  e.report_date,
-                  e.cua_hang_id,
-                  e.chien_dich_id,
-                  e.count_service,
-                  e.sum_price,
-                  e.count_service,
-                  e.sum_price,
-              ]
-          )
-      }
+        [
+          e.report_date,
+          e.cua_hang_id,
+          e.chien_dich_id,
+          e.count_service,
+          e.sum_price,
+          e.count_service,
+          e.sum_price
+        ]
+      );
+    }
 
-      return {"status": "OK", "msg": "Sync báo cáo thành công"}
+    return { status: "OK", msg: "Sync báo cáo thành công" };
   } catch (err) {
-      throw err
+    throw err;
   }
-}
+};
 
 class Handler {
   async addStrategy(req, res, next) {
@@ -558,22 +557,18 @@ class Handler {
 
     switch (type) {
       case "sum":
-        sql = `   SELECT   b.type, COUNT(1) AS count_
-                        FROM       sms_history a, sms_config b, xe x
+        sql = `   SELECT   a.sms_type_id,
+                          (SELECT   MAX (TYPE) FROM   sms_config WHERE   id = a.sms_type_id) type,
+                            COUNT(1) AS count_
+                        FROM       sms_history a, xe x
                         WHERE
-                                a.sms_datetime >= strftime ('%s', ?)
+                                a.chien_dich_id=?
+                                AND a.sms_datetime >= strftime ('%s', ?)
                                 AND a.sms_datetime < strftime ('%s', date (?, '+1 day'))
-                                AND a.sms_type_id = b.id
                                 AND a.xe_id = x.id
-                                AND (? IS NULL OR x.cua_hang_id=?)
-                    GROUP BY   b.type
-                    ORDER BY   b.id`;
-        params = [
-          date_sta,
-          date_end,
-          userInfo.cua_hang_id,
-          userInfo.cua_hang_id
-        ];
+                    GROUP BY   a.sms_type_id
+                    ORDER BY   a.sms_type_id`;
+        params = [chien_dich_id, date_sta, date_end];
         break;
       case "detail":
         sql = `SELECT
@@ -636,11 +631,13 @@ class Handler {
   }
 
   reportGeneral(req, res, next) {
-    let chien_dich_id = req.query.chien_dich_id ? req.query.chien_dich_id : null
-    let date_sta = req.query.date_sta
-    let date_end = req.query.date_end
-    let sql
-    let params
+    let chien_dich_id = req.query.chien_dich_id
+      ? req.query.chien_dich_id
+      : null;
+    let date_sta = req.query.date_sta;
+    let date_end = req.query.date_end;
+    let sql;
+    let params;
 
     sql = `SELECT   strftime ('%d/%m/%Y', a.report_date, 'unixepoch') as report_date,
                     (SELECT   MAX (name) FROM dm_cua_hang WHERE id = a.cua_hang_id) AS shop_name,
@@ -656,17 +653,22 @@ class Handler {
             WHERE   a.chien_dich_id=?
                     AND a.report_date >= strftime ('%s', ?)
                     AND a.report_date < strftime ('%s', date (?, '+1 day'))
-        ORDER BY   a.cua_hang_id, a.report_date`
-    params = [chien_dich_id, date_sta, date_end]
+        ORDER BY   a.cua_hang_id, a.report_date`;
+    params = [chien_dich_id, date_sta, date_end];
 
-
-    db.getRsts(sql, params).then(result => {
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify(result))
-    }).catch(err => {
-        res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-    })
-}
+    db.getRsts(sql, params)
+      .then(result => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        res.end(JSON.stringify(result));
+      })
+      .catch(err => {
+        res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 }
 
 module.exports = {
