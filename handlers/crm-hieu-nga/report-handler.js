@@ -373,16 +373,17 @@ class Handler {
 
         switch (type) {
             case 'sum':
-                sql = `   SELECT   b.type, COUNT(1) AS count_
-                            FROM       sms_history a, sms_config b, xe x
+                sql = `   SELECT   a.sms_type_id,
+                                    (SELECT   MAX (TYPE) FROM   sms_config WHERE   id = a.sms_type_id) type,
+                                    COUNT(1) AS count_
+                            FROM       sms_history a, xe x
                             WHERE
                                     a.sms_datetime >= strftime ('%s', ?)
                                     AND a.sms_datetime < strftime ('%s', date (?, '+1 day'))
-                                    AND a.sms_type_id = b.id
                                     AND a.xe_id = x.id
                                     AND (? IS NULL OR x.cua_hang_id=?)
-                        GROUP BY   b.type
-                        ORDER BY   b.id`
+                        GROUP BY   a.sms_type_id
+                        ORDER BY   a.sms_type_id`
                 params = [date_sta, date_end, userInfo.cua_hang_id, userInfo.cua_hang_id]
                 break;
             case 'detail':
@@ -392,17 +393,15 @@ class Handler {
                             (select max(name) from dm_loai_xe where id=b.loai_xe_id) AS bike_name,
                             b.bike_number,
                             strftime ('%d/%m %H:%M', a.sms_datetime, 'unixepoch') AS sms_datetime,
-                            d.type sms_type,
+                            (SELECT   MAX (TYPE) FROM   sms_config WHERE   id = a.sms_type_id) sms_type,
                             a.content,
                             (SELECT   MAX (short_name) FROM   dm_cua_hang WHERE   id = b.cua_hang_id) AS shop_name
                         FROM    sms_history a,
-                                sms_config d,
                                 xe b,
                                 khach_hang c
                         WHERE
                                 a.sms_datetime >= strftime ('%s', ?)
                                 AND a.sms_datetime < strftime ('%s', date (?, '+1 day'))
-                                AND a.sms_type_id = d.id
                                 AND a.xe_id = b.id
                                 AND (? IS NULL OR b.cua_hang_id=?)
                                 AND a.khach_hang_id = c.id
