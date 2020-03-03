@@ -1,4 +1,4 @@
-"use strict"
+"use strict";
 /**
  * su dung de kiem tra quyen truy cap
  * phan quyen user
@@ -6,75 +6,129 @@
  * xu ly tu token truoc do, neu req.user.data.role===99 la quyen root (chi developer 903500888 thoi)
  *
  */
-const db = require('../../db/sqlite3/crm-hieu-nga-dao')
-const {capitalizeFirstLetter, removeVietnameseFromString} = require('../../utils/utils')
-const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN"
-const support = require('./support')
+const db = require("../../db/sqlite3/crm-hieu-nga-dao");
+const {
+  capitalizeFirstLetter,
+  removeVietnameseFromString
+} = require("../../utils/utils");
+const STOP_PROMISE_CHAIN = "STOP_PROMISE_CHAIN";
+const support = require("./support");
 
 class Handler {
-    initNextKtdkDate(req, res, next) {
-        support._initNextKtdkDate().then(() => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'init success'}))
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+  initNextKtdkDate(req, res, next) {
+    support
+      ._initNextKtdkDate()
+      .then(() => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(JSON.stringify({ status: "OK", msg: "init success" }));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
+
+  test(req, res, next) {
+    let xe_id = req.query.xe_id;
+
+    support
+      ._updateSmsSchedule(xe_id)
+      .then(() => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(
+          JSON.stringify({ status: "OK", msg: "init success " + xe_id })
+        );
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
+
+  async addCustomer(req, res, next) {
+    try {
+      let customer = req.json_data;
+      customer.full_name_no_sign = capitalizeFirstLetter(
+        removeVietnameseFromString(customer.full_name.trim())
+      );
+      customer.phone = customer.phone.trim();
+      customer.province_code = customer.province_code
+        ? customer.province_code
+        : "DNA";
+      if (customer.sex && !Number(customer.sex)) {
+        customer.sex =
+          customer.sex.toUpperCase() == "NAM" ||
+          customer.sex.toUpperCase() == "1"
+            ? 1
+            : 0;
+      }
+
+      // import khach hang
+      let customer_result = await support._importCustomer(customer);
+
+      if (customer_result.is_error) {
+        res.writeHead(400, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(
+          JSON.stringify({
+            status: "NOK",
+            msg: customer_result.msg,
+            stt: customer.A
+          })
+        );
+      }
+
+      // import xe
+      let bike_result = await support._importBike(
+        customer,
+        customer_result.khach_hang_id
+      );
+
+      if (bike_result.is_error) {
+        res.writeHead(400, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(
+          JSON.stringify({
+            status: "NOK",
+            msg: bike_result.msg,
+            stt: customer.A
+          })
+        );
+      }
+
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      return res.end(
+        JSON.stringify({
+          status: "OK",
+          msg: "Thêm thành công",
+          khach_hang_id: customer_result.khach_hang_id,
+          xe_id: bike_result.xe_id
         })
+      );
+    } catch (err) {
+      return res
+        .status(400)
+        .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
     }
+  }
 
-    test(req, res, next) {
-        let xe_id = req.query.xe_id
+  async saveCustomer(req, res, next) {
+    let customer = req.json_data;
+    let khach_hang_id = req.params.khach_hang_id;
 
-        support._updateSmsSchedule(xe_id).then(() => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'init success ' + xe_id}))
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        })
-    }
+    try {
+      let sql = ``;
+      let params = [];
 
-    async addCustomer(req, res, next) {
-        try {
-            let customer = req.json_data
-            customer.full_name_no_sign = capitalizeFirstLetter(removeVietnameseFromString(customer.full_name.trim()))
-            customer.phone = customer.phone.trim()
-            customer.province_code = customer.province_code ? customer.province_code : 'DNA'
-            if (customer.sex && !Number(customer.sex)) {
-                customer.sex = customer.sex.toUpperCase() == 'NAM' || customer.sex.toUpperCase() == '1' ? 1 : 0
-            }
-
-            // import khach hang
-            let customer_result = await support._importCustomer(customer)
-
-            if (customer_result.is_error) {
-                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'NOK', msg: customer_result.msg, stt:customer.A}))
-            }
-
-            // import xe
-            let bike_result = await support._importBike(customer, customer_result.khach_hang_id)
-
-            if (bike_result.is_error) {
-                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'NOK', msg: bike_result.msg, stt:customer.A}))
-            }
-
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'Thêm thành công', khach_hang_id: customer_result.khach_hang_id, xe_id: bike_result.xe_id}))
-
-        } catch (err) {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        }
-    }
-
-    async saveCustomer(req, res, next) {
-        let customer = req.json_data
-        let khach_hang_id = req.params.khach_hang_id
-
-        try {
-            let sql = ``
-            let params = []
-
-            sql = `UPDATE khach_hang
+      sql = `UPDATE khach_hang
                     SET
                         full_name = ?,
                         phone = ?,
@@ -84,38 +138,43 @@ class Handler {
                         nghe_nghiep_id = ?,
                         address = ?,
                         full_name_no_sign = ?
-                    WHERE id = ?`
-            params = [
-                customer.full_name,
-                customer.phone,
-                customer.phone_2,
-                customer.birthday,
-                customer.sex == 'NAM' || customer.sex == 'MALE' || customer.sex == '1' ? 1 : 0,
-                customer.nghe_nghiep_id,
-                customer.address,
-                capitalizeFirstLetter(removeVietnameseFromString(customer.full_name)),
-                khach_hang_id
-            ]
+                    WHERE id = ?`;
+      params = [
+        customer.full_name,
+        customer.phone,
+        customer.phone_2,
+        customer.birthday,
+        customer.sex == "NAM" || customer.sex == "MALE" || customer.sex == "1"
+          ? 1
+          : 0,
+        customer.nghe_nghiep_id,
+        customer.address,
+        capitalizeFirstLetter(removeVietnameseFromString(customer.full_name)),
+        khach_hang_id
+      ];
 
-            await db.runSql(sql, params)
+      await db.runSql(sql, params);
 
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'Lưu thông tin thành công'}))
-
-        } catch (err) {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        }
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      return res.end(
+        JSON.stringify({ status: "OK", msg: "Lưu thông tin thành công" })
+      );
+    } catch (err) {
+      return res
+        .status(400)
+        .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
     }
+  }
 
-    async saveBike(req, res, next) {
-        let bike = req.json_data
-        let xe_id = req.params.xe_id
+  async saveBike(req, res, next) {
+    let bike = req.json_data;
+    let xe_id = req.params.xe_id;
 
-        try {
-            let sql = ``
-            let params = []
+    try {
+      let sql = ``;
+      let params = [];
 
-            sql = `UPDATE xe
+      sql = `UPDATE xe
                     SET
                         ma_loai_xe_id = ?,
                         loai_xe_id = ?,
@@ -125,168 +184,267 @@ class Handler {
                         bike_number = ?,
                         buy_date = strftime('%s', ?),
                         warranty_number = ?
-                    WHERE id = ?`
-            params = [
-                bike.ma_loai_xe_id,
-                bike.loai_xe_id,
-                bike.mau_xe_id,
-                bike.frame_number,
-                bike.engine_number,
-                bike.bike_number,
-                bike.buy_date,
-                bike.warranty_number,
-                xe_id
-            ]
+                    WHERE id = ?`;
+      params = [
+        bike.ma_loai_xe_id,
+        bike.loai_xe_id,
+        bike.mau_xe_id,
+        bike.frame_number,
+        bike.engine_number,
+        bike.bike_number,
+        bike.buy_date,
+        bike.warranty_number,
+        xe_id
+      ];
 
-            await db.runSql(sql, params)
-            await support._updateSmsSchedule(xe_id)
+      await db.runSql(sql, params);
+      await support._updateSmsSchedule(xe_id);
 
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'Lưu thông tin thành công'}))
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      return res.end(
+        JSON.stringify({ status: "OK", msg: "Lưu thông tin thành công" })
+      );
+    } catch (err) {
+      return res
+        .status(400)
+        .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+    }
+  }
 
-        } catch (err) {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+  async importCustomer(req, res, next) {
+    let customer = req.json_data;
+
+    try {
+      // console.log(customer);
+      // Xu ly danh muc ma loai xe
+      support._updateCategory("dm_ma_loai_xe", { name: customer.bike_code });
+      // Xu ly danh muc loai xe
+      support._updateCategory("dm_loai_xe", { name: customer.bike_name });
+      // Xu ly danh muc mau xe
+      support._updateCategory("dm_mau_xe", { name: customer.bike_color });
+      // Xu ly danh muc quan,tp
+      support._updateCategory("dm_quan_huyen", {
+        province: customer.province,
+        district: customer.district
+      });
+      // Xu ly nghe nghiep
+      support._updateCategory("dm_nghe_nghiep", { name: customer.job });
+      // Xu ly tinh trang xe
+      support._updateCategory("dm_tinh_trang_xe", {
+        name: customer.y_kien_mua_xe
+      });
+
+      // import khach hang
+      let customer_result = await support._importCustomer(customer);
+      // import xe
+      let bike_result = await support._importBike(
+        customer,
+        customer_result.khach_hang_id
+      );
+
+      if (bike_result.status != "OK") {
+        res.writeHead(400, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(
+          JSON.stringify({
+            status: "NOK",
+            msg: bike_result.msg,
+            err: bike_result,
+            stt: customer.A
+          })
+        );
+      }
+
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      return res.end(JSON.stringify({ status: "OK", msg: "Thành công" }));
+    } catch (err) {
+      return res
+        .status(400)
+        .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+    }
+  }
+
+  async importCustomerService(req, res, next) {
+    let customer = req.json_data;
+
+    try {
+      // console.log(customer);
+      // Xu ly danh muc loai xe
+      support._updateCategory("dm_loai_xe", { name: customer.bike_name });
+      // Xu ly danh muc nhan vien
+      support._updateCategory("dm_nhan_vien", {
+        name: customer.reception_staff
+      });
+      // Xu ly danh muc nhan vien
+      support._updateCategory("dm_nhan_vien", {
+        name: customer.repaire_staff_1
+      });
+      // Xu ly danh muc nhan vien
+      support._updateCategory("dm_nhan_vien", {
+        name: customer.repaire_staff_2
+      });
+      // Xu ly danh muc nhan vien
+      support._updateCategory("dm_nhan_vien", { name: customer.check_staff });
+      // Xu ly danh muc yeu cau
+      support._updateCategory("dm_yeu_cau", {
+        name: customer.customer_require
+      });
+      // Xu ly danh muc yeu cau
+      support._updateCategory("dm_yeu_cau", { name: customer.next_require });
+      // Xu ly tu van
+      support._updateCategory("dm_tu_van", { name: customer.offer_1 });
+      // Xu ly tu van
+      support._updateCategory("dm_tu_van", { name: customer.offer_2 });
+      // Xu ly tu van
+      support._updateCategory("dm_tu_van", { name: customer.offer_3 });
+      // Xu ly danh muc phu tung
+      support._updateCategory("dm_phu_tung", { name: customer.equips });
+
+      // import khach hang
+      let customer_result = await support._importCustomer(customer);
+
+      if (customer_result.is_error) {
+        res.writeHead(400, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(
+          JSON.stringify({
+            status: "NOK",
+            msg: customer_result.msg,
+            stt: customer.A
+          })
+        );
+      }
+
+      // import xe
+      let bike_result = await support._importBike(
+        customer,
+        customer_result.khach_hang_id
+      );
+
+      if (bike_result.is_error) {
+        res.writeHead(400, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(
+          JSON.stringify({
+            status: "NOK",
+            msg: bike_result.msg,
+            stt: customer.A
+          })
+        );
+      }
+
+      // import service
+      if (customer_result.khach_hang_id && bike_result.xe_id) {
+        let service_result = await support._importService(
+          customer,
+          customer_result.khach_hang_id,
+          bike_result.xe_id
+        );
+
+        if (service_result.status != "OK") {
+          res.writeHead(400, {
+            "Content-Type": "application/json; charset=utf-8"
+          });
+          return res.end(
+            JSON.stringify({
+              status: "NOK",
+              msg: service_result.msg,
+              err: service_result,
+              stt: customer.A
+            })
+          );
         }
+
+        // import service detail
+        support._importEquip(service_result.dich_vu_id, customer.equips);
+
+        // update last service info 4 bike
+        support._updateLastService4Bike(
+          bike_result.xe_id,
+          service_result.dich_vu_id,
+          customer.customer_require,
+          customer.offer_1,
+          customer.out_date
+        );
+
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(JSON.stringify({ status: "OK", msg: "Thành công" }));
+      } else {
+        res.writeHead(400, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(
+          JSON.stringify({
+            status: "NOK",
+            msg: "Không import được vì thiếu thông tin Khách hàng và xe",
+            customer_result,
+            bike_result,
+            stt: customer.A
+          })
+        );
+      }
+    } catch (err) {
+      return res
+        .status(400)
+        .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
     }
+  }
 
-    async importCustomer(req, res, next) {
-        let customer = req.json_data
+  async delCustomer(req, res, next) {
+    let khach_hang_id = req.params.khach_hang_id;
+    //sqlite ON DELETE CASCADE khong hoat dong khi call tu nodejs?
+    //chua hieu vi sao, nen bay gio phai delete thu cong
+    let sql = `DELETE FROM dich_vu WHERE khach_hang_id=?`;
+    let params = [khach_hang_id];
+    await db.runSql(sql, params);
+    sql = `DELETE FROM goi_ra WHERE khach_hang_id=?`;
+    await db.runSql(sql, params);
+    sql = `DELETE FROM xe WHERE khach_hang_id=?`;
+    await db.runSql(sql, params);
+    sql = `DELETE FROM khach_hang WHERE id=?`;
 
-        try {
-            // console.log(customer);
-            // Xu ly danh muc ma loai xe
-            support._updateCategory('dm_ma_loai_xe', {name: customer.bike_code})
-            // Xu ly danh muc loai xe
-            support._updateCategory('dm_loai_xe', {name: customer.bike_name})
-            // Xu ly danh muc mau xe
-            support._updateCategory('dm_mau_xe', {name: customer.bike_color})
-            // Xu ly danh muc quan,tp
-            support._updateCategory('dm_quan_huyen', {province: customer.province, district: customer.district})
-            // Xu ly nghe nghiep
-            support._updateCategory('dm_nghe_nghiep', {name: customer.job})
-            // Xu ly tinh trang xe
-            support._updateCategory('dm_tinh_trang_xe', {name: customer.y_kien_mua_xe})
+    return db
+      .runSql(sql, params)
+      .then(result => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(
+          JSON.stringify({
+            status: "OK",
+            msg: "Xóa Khách hàng thành công",
+            count: result.changes
+          })
+        );
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-            // import khach hang
-            let customer_result = await support._importCustomer(customer)
-            // import xe
-            let bike_result = await support._importBike(customer, customer_result.khach_hang_id)
+  getCustomers(req, res, next) {
+    let filter = req.query.filter; // birthday|coming loc danh sach gi
+    let full_name = req.query.full_name
+      ? removeVietnameseFromString(req.query.full_name)
+      : null; // chuoi tim kiem neu co
+    let phone = req.query.phone ? req.query.phone : null; // chuoi tim kiem neu co
+    let bike_number = req.query.bike_number ? req.query.bike_number : null; // chuoi tim kiem neu co
+    let frame_number = req.query.frame_number ? req.query.frame_number : null; // chuoi tim kiem neu co
+    let engine_number = req.query.engine_number
+      ? req.query.engine_number
+      : null; // chuoi tim kiem neu co
+    let sql = "";
+    let params = [];
+    let userInfo = req.userInfo;
 
-            if (bike_result.status != 'OK') {
-                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'NOK', msg: bike_result.msg, err: bike_result, stt:customer.A}))
-            }
-
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'Thành công'}))
-        } catch (err) {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        }
-    }
-
-    async importCustomerService(req, res, next) {
-        let customer = req.json_data
-
-        try {
-            // console.log(customer);
-            // Xu ly danh muc loai xe
-            support._updateCategory('dm_loai_xe', {name: customer.bike_name})
-            // Xu ly danh muc nhan vien
-            support._updateCategory('dm_nhan_vien', {name: customer.reception_staff})
-            // Xu ly danh muc nhan vien
-            support._updateCategory('dm_nhan_vien', {name: customer.repaire_staff_1})
-            // Xu ly danh muc nhan vien
-            support._updateCategory('dm_nhan_vien', {name: customer.repaire_staff_2})
-            // Xu ly danh muc nhan vien
-            support._updateCategory('dm_nhan_vien', {name: customer.check_staff})
-            // Xu ly danh muc yeu cau
-            support._updateCategory('dm_yeu_cau', {name: customer.customer_require})
-            // Xu ly danh muc yeu cau
-            support._updateCategory('dm_yeu_cau', {name: customer.next_require})
-            // Xu ly tu van
-            support._updateCategory('dm_tu_van', {name: customer.offer_1})
-            // Xu ly tu van
-            support._updateCategory('dm_tu_van', {name: customer.offer_2})
-            // Xu ly tu van
-            support._updateCategory('dm_tu_van', {name: customer.offer_3})
-            // Xu ly danh muc phu tung
-            support._updateCategory('dm_phu_tung', {name: customer.equips})
-
-            // import khach hang
-            let customer_result = await support._importCustomer(customer)
-
-            if (customer_result.is_error) {
-                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'NOK', msg: customer_result.msg, stt:customer.A}))
-            }
-
-            // import xe
-            let bike_result = await support._importBike(customer, customer_result.khach_hang_id)
-
-            if (bike_result.is_error) {
-                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'NOK', msg: bike_result.msg, stt:customer.A}))
-            }
-
-            // import service
-            if (customer_result.khach_hang_id && bike_result.xe_id) {
-                let service_result = await support._importService(customer, customer_result.khach_hang_id, bike_result.xe_id)
-
-                if (service_result.status != 'OK') {
-                    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                    res.end(JSON.stringify({status:'NOK', msg: service_result.msg, err: service_result, stt:customer.A}))
-                }
-
-                // import service detail
-                support._importEquip(service_result.dich_vu_id, customer.equips)
-
-                // update last service info 4 bike
-                support._updateLastService4Bike(bike_result.xe_id, service_result.dich_vu_id, customer.customer_require, customer.offer_1, customer.out_date)
-
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Thành công'}))
-            } else {
-                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'NOK', msg: 'Không import được vì thiếu thông tin Khách hàng và xe', customer_result, bike_result, stt:customer.A}))
-            }
-        } catch (err) {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        }
-    }
-
-    async delCustomer(req, res, next) {
-        let khach_hang_id = req.params.khach_hang_id
-        //sqlite ON DELETE CASCADE khong hoat dong khi call tu nodejs?
-        //chua hieu vi sao, nen bay gio phai delete thu cong
-        let sql = `DELETE FROM dich_vu WHERE khach_hang_id=?`
-        let params = [khach_hang_id]
-        await db.runSql(sql, params)
-        sql = `DELETE FROM goi_ra WHERE khach_hang_id=?`
-        await db.runSql(sql, params)
-        sql = `DELETE FROM xe WHERE khach_hang_id=?`
-        await db.runSql(sql, params)
-        sql = `DELETE FROM khach_hang WHERE id=?`
-
-        return db.runSql(sql, params).then(result => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'Xóa Khách hàng thành công', count:result.changes}))
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        })
-    }
-
-    getCustomers(req, res, next) {
-        let filter = req.query.filter // birthday|coming loc danh sach gi
-        let full_name = req.query.full_name ? removeVietnameseFromString(req.query.full_name) : null // chuoi tim kiem neu co
-        let phone = req.query.phone ? req.query.phone : null // chuoi tim kiem neu co
-        let bike_number = req.query.bike_number ? req.query.bike_number : null // chuoi tim kiem neu co
-        let frame_number = req.query.frame_number ? req.query.frame_number : null // chuoi tim kiem neu co
-        let engine_number = req.query.engine_number ? req.query.engine_number : null // chuoi tim kiem neu co
-        let sql = ''
-        let params = []
-        let userInfo = req.userInfo
-
-        sql = `SELECT
+    sql = `SELECT
                 a.id as xe_id,
                 a.khach_hang_id,
                 (SELECT MAX(short_name) FROM dm_cua_hang where id=a.cua_hang_id) AS shop_name,
@@ -308,12 +466,11 @@ class Handler {
                 b.province_code,
                 b.address,
                 (select max(name) from dm_muc_dich_goi_ra where id=a.last_muc_dich_goi_ra_id) last_muc_dich_goi_ra,
-                (select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id) last_ket_qua_goi_ra`
+                (select max(name) from dm_ket_qua_goi_ra where id=a.last_ket_qua_goi_ra_id) last_ket_qua_goi_ra`;
 
-        switch (filter) {
-
-            case 'after10BuyDate':
-                sql += ` FROM xe a , khach_hang b
+    switch (filter) {
+      case "after10BuyDate":
+        sql += ` FROM xe a , khach_hang b
                     WHERE (a.y_kien_mua_xe_id IS NULL OR a.y_kien_mua_xe_id=9)
                         AND a.count_callout_fail < 2
                         AND (? IS NULL OR a.cua_hang_id=?)
@@ -321,13 +478,12 @@ class Handler {
                         AND a.buy_date >= strftime ('%s', date('now', '-20 day'))
                         AND a.khach_hang_id=b.id
                     ORDER BY a.buy_date
-                    LIMIT 30`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
+                    LIMIT 30`;
+        params = [userInfo.cua_hang_id, userInfo.cua_hang_id];
+        break;
 
-            case 'afterMaintanceDate':
-
-                sql += `    ,c.id AS dich_vu_id
+      case "afterMaintanceDate":
+        sql += `    ,c.id AS dich_vu_id
                             ,strftime ('%d/%m/%Y', c.service_date, 'unixepoch') AS service_date
                             ,(select max(name) from dm_yeu_cau where id=c.yeu_cau_id) yeu_cau
                             ,(select max(name) from dm_tu_van where id=c.offer_1) offer_1
@@ -342,12 +498,12 @@ class Handler {
                             AND (c.y_kien_dich_vu_id IS NULL OR c.y_kien_dich_vu_id = 9)
                             AND (? IS NULL OR a.cua_hang_id=?)
                     ORDER BY c.service_date
-                    LIMIT 30`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
+                    LIMIT 30`;
+        params = [userInfo.cua_hang_id, userInfo.cua_hang_id];
+        break;
 
-            case 'ktdk':
-                sql += `, ss.sms_type_id
+      case "ktdk":
+        sql += `, ss.sms_type_id
                         , strftime ('%d/%m/%Y', ss.sms_date_schedule, 'unixepoch') AS next_ktdk_date
                         , c.type as next_ktdk_type
                     FROM sms_schedule ss, xe a , khach_hang b, sms_config c
@@ -363,12 +519,12 @@ class Handler {
                         AND a.count_callout_fail < 2
                         AND a.khach_hang_id=b.id
                     ORDER BY ss.sms_date_schedule
-                    LIMIT 30`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
+                    LIMIT 30`;
+        params = [userInfo.cua_hang_id, userInfo.cua_hang_id];
+        break;
 
-            case 'smsNotCome':
-                sql += `, ss.sms_type_id
+      case "smsNotCome":
+        sql += `, ss.sms_type_id
                         , strftime ('%d/%m/%Y', ss.sms_datetime, 'unixepoch') AS sms_date
                         , strftime ('%d/%m/%Y', ss.sms_date_schedule, 'unixepoch') AS next_ktdk_date
                         , c.type as next_ktdk_type
@@ -385,12 +541,12 @@ class Handler {
                         AND a.count_callout_fail < 2
                         AND a.khach_hang_id=b.id
                     ORDER BY ss.sms_datetime
-                    LIMIT 30`
-                params = [userInfo.cua_hang_id, userInfo.cua_hang_id]
-                break;
+                    LIMIT 30`;
+        params = [userInfo.cua_hang_id, userInfo.cua_hang_id];
+        break;
 
-            case 'search':
-                    sql += `, strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
+      case "search":
+        sql += `, strftime ('%d/%m/%Y', a.last_service_date, 'unixepoch') AS last_service_date
                             , (select max(name) from dm_yeu_cau where id=a.last_yeu_cau_id) last_yeu_cau
                         FROM xe a , khach_hang b
                         WHERE
@@ -401,30 +557,43 @@ class Handler {
                             AND (ifnull(?,'') = '' OR a.frame_number LIKE '%' || UPPER(?) || '%')
                             AND (ifnull(?,'') = '' OR a.engine_number LIKE '%' || UPPER(?) || '%')
                         ORDER BY full_name_no_sign
-                        LIMIT 30`
-                    params = [full_name, full_name,
-                            phone, phone,
-                            bike_number, bike_number,
-                            frame_number, frame_number,
-                            engine_number, engine_number
-                        ]
-                    break;
-            default:
-                sql = `SELECT 1`
-        }
-
-        db.getRsts(sql, params).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        });
+                        LIMIT 30`;
+        params = [
+          full_name,
+          full_name,
+          phone,
+          phone,
+          bike_number,
+          bike_number,
+          frame_number,
+          frame_number,
+          engine_number,
+          engine_number
+        ];
+        break;
+      default:
+        sql = `SELECT 1`;
     }
 
-    getCustomer(req, res, next) {
-        let khach_hang_id = req.params.khach_hang_id
+    db.getRsts(sql, params)
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-        db.getRst(`SELECT id AS khach_hang_id,
+  getCustomer(req, res, next) {
+    let khach_hang_id = req.params.khach_hang_id;
+
+    db.getRst(
+      `SELECT id AS khach_hang_id,
                     quan_huyen_id,
                     nghe_nghiep_id,
                     full_name,
@@ -441,19 +610,27 @@ class Handler {
                     address,
                     full_name_no_sign
             FROM khach_hang a
-            WHERE id=?`, [khach_hang_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            WHERE id=?`,
+      [khach_hang_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    getBike(req, res, next) {
-        let xe_id = req.params.xe_id
+  getBike(req, res, next) {
+    let xe_id = req.params.xe_id;
 
-        db.getRst(`select
+    db.getRst(
+      `select
                     id as xe_id,
                     cua_hang_id,
                     khach_hang_id,
@@ -475,19 +652,27 @@ class Handler {
                     (SELECT MAX(name) FROM dm_ket_qua_goi_ra where id=xe.y_kien_mua_xe_id) AS y_kien_mua_xe,
                     strftime ('%d/%m/%Y', last_call_date, 'unixepoch') AS call_date
             from xe
-            where id=?`, [xe_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            where id=?`,
+      [xe_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    getCustomerBikes(req, res, next) {
-        let khach_hang_id = req.params.khach_hang_id
+  getCustomerBikes(req, res, next) {
+    let khach_hang_id = req.params.khach_hang_id;
 
-        db.getRsts("SELECT a.id,\
+    db.getRsts(
+      "SELECT a.id,\
                             a.khach_hang_id,\
                             a.cua_hang_id,\
                             a.loai_xe_id,\
@@ -510,19 +695,27 @@ class Handler {
                             ON a.id = d.khach_hang_xe_id\
                         LEFT OUTER JOIN dm_dich_vu e ON d.dich_vu_id = e.id\
                     WHERE a.khach_hang_id = ? AND a.cua_hang_id = b.id AND a.loai_xe_id = c.id\
-                    ORDER BY d.book_date DESC", [khach_hang_id, khach_hang_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+                    ORDER BY d.book_date DESC",
+      [khach_hang_id, khach_hang_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    getCustomerMaintances(req, res, next) {
-        let khach_hang_id = req.params.khach_hang_id
+  getCustomerMaintances(req, res, next) {
+    let khach_hang_id = req.params.khach_hang_id;
 
-        db.getRsts("  SELECT   strftime ('%d/%m/%Y', a.maintance_date, 'unixepoch') AS maintance_date,\
+    db.getRsts(
+      "  SELECT   strftime ('%d/%m/%Y', a.maintance_date, 'unixepoch') AS maintance_date,\
                             (select max(name) From dm_loai_xe where id=b.loai_xe_id) bike_name,\
                             (select max(name) from dm_kieu_bao_duong where id=a.kieu_bao_duong_id) as maintance_name,\
                             a.total_price,\
@@ -534,19 +727,27 @@ class Handler {
                                                     WHERE   khach_hang_id = ?)\
                             AND a.khach_hang_xe_id = b.id\
                     ORDER BY   a.maintance_date DESC\
-                    LIMIT 5", [khach_hang_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+                    LIMIT 5",
+      [khach_hang_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    getCustomerBikeInfo(req, res, next) {
-        let khach_hang_xe_id = req.params.khach_hang_xe_id
+  getCustomerBikeInfo(req, res, next) {
+    let khach_hang_xe_id = req.params.khach_hang_xe_id;
 
-        db.getRst(`SELECT a.id,
+    db.getRst(
+      `SELECT a.id,
                         a.bike_number,
                         b.full_name,
                         b.phone,
@@ -566,19 +767,27 @@ class Handler {
                                     FROM lich_hen
                                     WHERE status IS NULL AND khach_hang_xe_id=?) d
                         ON a.id = d.khach_hang_xe_id
-                WHERE a.id = ? AND a.khach_hang_id = b.id AND a.loai_xe_id = c.id`, [khach_hang_xe_id, khach_hang_xe_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+                WHERE a.id = ? AND a.khach_hang_id = b.id AND a.loai_xe_id = c.id`,
+      [khach_hang_xe_id, khach_hang_xe_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    getCustomerMaintanceInfo(req, res, next) {
-        let bao_duong_id = req.params.bao_duong_id
+  getCustomerMaintanceInfo(req, res, next) {
+    let bao_duong_id = req.params.bao_duong_id;
 
-        db.getRst("SELECT a.id AS bao_duong_id,\
+    db.getRst(
+      "SELECT a.id AS bao_duong_id,\
                     c.full_name,\
                     c.phone,\
                     d.name AS bike_name,\
@@ -589,33 +798,48 @@ class Handler {
                 khach_hang_xe b,\
                 khach_hang c,\
                 dm_loai_xe d\
-            WHERE a.id = ? AND a.khach_hang_xe_id = b.id AND b.khach_hang_id = c.id AND b.loai_xe_id = d.id", [bao_duong_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            WHERE a.id = ? AND a.khach_hang_xe_id = b.id AND b.khach_hang_id = c.id AND b.loai_xe_id = d.id",
+      [bao_duong_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    getMaintanceDetails(req, res, next) {
-        let bao_duong_id = req.params.bao_duong_id
+  getMaintanceDetails(req, res, next) {
+    let bao_duong_id = req.params.bao_duong_id;
 
-        db.getRsts("SELECT b.name, a.price\
+    db.getRsts(
+      "SELECT b.name, a.price\
                     FROM bao_duong_chi_phi a, dm_loai_bao_duong b\
                     WHERE a.bao_duong_id = ? AND a.loai_bao_duong_id = b.id\
-                    ORDER BY b.name_no_sign", [bao_duong_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+                    ORDER BY b.name_no_sign",
+      [bao_duong_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    updateFeedbackAfterBuy(req, res, next) {
-        let feedback = req.json_data
-        let sql = `INSERT INTO goi_ra (
+  updateFeedbackAfterBuy(req, res, next) {
+    let feedback = req.json_data;
+    let sql = `INSERT INTO goi_ra (
                         khach_hang_id,
                         xe_id,
                         muc_dich_goi_ra_id,
@@ -633,31 +857,45 @@ class Handler {
                     strftime('%s', datetime('now', 'localtime')),
                     ?,
                     strftime('%s', datetime('now', 'localtime'))
-                )`
-        let params = [
-            feedback.khach_hang_id,
+                )`;
+    let params = [
+      feedback.khach_hang_id,
+      feedback.xe_id,
+      feedback.muc_dich_goi_ra_id,
+      feedback.ket_qua_goi_ra_id,
+      feedback.note,
+      req.userInfo.id
+    ];
+
+    db.runSql(sql, params)
+      .then(goi_ra => {
+        return support
+          ._updateLastCallout4Bike(
             feedback.xe_id,
-            feedback.muc_dich_goi_ra_id,
+            goi_ra.lastID,
+            3,
             feedback.ket_qua_goi_ra_id,
-            feedback.note,
-            req.userInfo.id
-        ]
+            feedback.note
+          )
+          .then(result => {
+            res.writeHead(200, {
+              "Content-Type": "application/json; charset=utf-8"
+            });
+            return res.end(
+              JSON.stringify({ status: "OK", msg: "Lưu ý kiến KH thành công" })
+            );
+          });
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-        db.runSql(sql, params).then(goi_ra => {
-            return support._updateLastCallout4Bike(feedback.xe_id, goi_ra.lastID, 3, feedback.ket_qua_goi_ra_id, feedback.note)
-            .then(result => {
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
-            })
-        })
-        .catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        })
-    }
-
-    updateFeedbackAfterMaintance(req, res, next) {
-        let feedback = req.json_data
-        let sql = `INSERT INTO goi_ra (
+  updateFeedbackAfterMaintance(req, res, next) {
+    let feedback = req.json_data;
+    let sql = `INSERT INTO goi_ra (
                         khach_hang_id,
                         xe_id,
                         muc_dich_goi_ra_id,
@@ -677,19 +915,20 @@ class Handler {
                     ?,
                     strftime('%s', datetime('now', 'localtime')),
                     ?
-                )`
-        let params = [
-            feedback.khach_hang_id,
-            feedback.xe_id,
-            feedback.muc_dich_goi_ra_id,
-            feedback.y_kien_dich_vu_id,
-            feedback.note,
-            req.userInfo.id,
-            feedback.dich_vu_id,
-        ]
+                )`;
+    let params = [
+      feedback.khach_hang_id,
+      feedback.xe_id,
+      feedback.muc_dich_goi_ra_id,
+      feedback.y_kien_dich_vu_id,
+      feedback.note,
+      req.userInfo.id,
+      feedback.dich_vu_id
+    ];
 
-        db.runSql(sql, params).then(goi_ra => {
-            sql = `update dich_vu
+    db.runSql(sql, params)
+      .then(goi_ra => {
+        sql = `update dich_vu
                     SET call_date=strftime('%s', datetime('now', 'localtime')),
                         y_kien_dich_vu_id=?,
                         note=?,
@@ -699,41 +938,59 @@ class Handler {
                             CASE WHEN 9 = ? THEN count_callout_fail + 1
                             ELSE 0 END
                         )
-                    WHERE id=?`
-            params = [
-                feedback.y_kien_dich_vu_id,
-                feedback.note,
-                feedback.thai_do_nhan_vien_id,
-                feedback.note_thai_do,
-                Number(feedback.y_kien_dich_vu_id),
-                feedback.dich_vu_id,
-            ]
+                    WHERE id=?`;
+        params = [
+          feedback.y_kien_dich_vu_id,
+          feedback.note,
+          feedback.thai_do_nhan_vien_id,
+          feedback.note_thai_do,
+          Number(feedback.y_kien_dich_vu_id),
+          feedback.dich_vu_id
+        ];
 
-            return db.runSql(sql, params).then(result => {
-                return support._updateLastCallout4Bike(feedback.xe_id, goi_ra.lastID, 2, feedback.y_kien_dich_vu_id, feedback.note)
-            }).then(result => {
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Lưu ý kiến KH thành công'}))
-            })
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        })
-    }
+        return db
+          .runSql(sql, params)
+          .then(result => {
+            return support._updateLastCallout4Bike(
+              feedback.xe_id,
+              goi_ra.lastID,
+              2,
+              feedback.y_kien_dich_vu_id,
+              feedback.note
+            );
+          })
+          .then(result => {
+            res.writeHead(200, {
+              "Content-Type": "application/json; charset=utf-8"
+            });
+            return res.end(
+              JSON.stringify({ status: "OK", msg: "Lưu ý kiến KH thành công" })
+            );
+          });
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    addSchedule(req, res, next) {
-        let bao_duong_id = req.params.bao_duong_id
-        let schedule = req.json_data
-        schedule.is_free = (schedule.is_free ? 1 : 0)
-        schedule.book_date = schedule.book_date.replace('T',' ').replace('Z','')
-        let sql = ''
-        let params = []
+  addSchedule(req, res, next) {
+    let bao_duong_id = req.params.bao_duong_id;
+    let schedule = req.json_data;
+    schedule.is_free = schedule.is_free ? 1 : 0;
+    schedule.book_date = schedule.book_date.replace("T", " ").replace("Z", "");
+    let sql = "";
+    let params = [];
 
-        if (!schedule.book_date) {
-            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'NOK', message:'Bạn phải nhập ngày hẹn'}))
-            throw new Error(STOP_PROMISE_CHAIN)
-        } else {
-            sql = `INSERT INTO lich_hen (khach_hang_xe_id,
+    if (!schedule.book_date) {
+      res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(
+        JSON.stringify({ status: "NOK", message: "Bạn phải nhập ngày hẹn" })
+      );
+      throw new Error(STOP_PROMISE_CHAIN);
+    } else {
+      sql = `INSERT INTO lich_hen (khach_hang_xe_id,
                         dich_vu_id,
                         book_date,
                         is_free,
@@ -744,17 +1001,18 @@ class Handler {
                     strftime('%s', ?),
                     ?,
                     ?,
-                    strftime('%s', datetime('now', 'localtime')))`
-            params = [
-                bao_duong_id,
-                schedule.dich_vu_id,
-                schedule.book_date,
-                schedule.is_free,
-                req.userInfo.id
-            ]
+                    strftime('%s', datetime('now', 'localtime')))`;
+      params = [
+        bao_duong_id,
+        schedule.dich_vu_id,
+        schedule.book_date,
+        schedule.is_free,
+        req.userInfo.id
+      ];
 
-            db.runSql(sql, params).then(obj => {
-                sql = `UPDATE khach_hang
+      db.runSql(sql, params)
+        .then(obj => {
+          sql = `UPDATE khach_hang
                 SET last_call_out_date = strftime ('%s', datetime ('now', 'localtime'))
                     , next_book_date = strftime ('%s', ?)
                     , goi_ra_id = NULL
@@ -765,27 +1023,34 @@ class Handler {
                             FROM khach_hang_xe
                             WHERE id = (SELECT MAX (khach_hang_xe_id)
                                         FROM bao_duong
-                                        WHERE id = ?))`
-                params = [
-                    schedule.book_date,
-                    req.userInfo.id,
-                    bao_duong_id
-                ]
-                return db.runSql(sql, params).then(result => {
-                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                    res.end(JSON.stringify({status:'OK', msg:'Đặt lịch hẹn thành công', count:result.changes, id:result.lastID}))
-                })
-            })
-            .catch(err => {
-                res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-            })
-        }
+                                        WHERE id = ?))`;
+          params = [schedule.book_date, req.userInfo.id, bao_duong_id];
+          return db.runSql(sql, params).then(result => {
+            res.writeHead(200, {
+              "Content-Type": "application/json; charset=utf-8"
+            });
+            return res.end(
+              JSON.stringify({
+                status: "OK",
+                msg: "Đặt lịch hẹn thành công",
+                count: result.changes,
+                id: result.lastID
+              })
+            );
+          });
+        })
+        .catch(err => {
+          return res
+            .status(400)
+            .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+        });
     }
+  }
 
-    addCallout(req, res, next) {
-        let callout = req.json_data
+  addCallout(req, res, next) {
+    let callout = req.json_data;
 
-        let sql = `INSERT INTO goi_ra (
+    let sql = `INSERT INTO goi_ra (
                             khach_hang_id,
                             xe_id,
                             muc_dich_goi_ra_id,
@@ -803,38 +1068,50 @@ class Handler {
                         strftime('%s', datetime('now', 'localtime')),
                         ?,
                         strftime('%s', datetime('now', 'localtime'))
-                    )`
-        let params = [
-            callout.khach_hang_id,
+                    )`;
+    let params = [
+      callout.khach_hang_id,
+      callout.xe_id,
+      callout.muc_dich_goi_ra_id,
+      callout.ket_qua_goi_ra_id,
+      callout.note,
+      req.userInfo.id
+    ];
+
+    db.runSql(sql, params)
+      .then(goi_ra => {
+        return support
+          ._updateLastCallout4Bike(
             callout.xe_id,
+            goi_ra.lastID,
             callout.muc_dich_goi_ra_id,
             callout.ket_qua_goi_ra_id,
             callout.note,
-            req.userInfo.id
-        ]
+            callout.sms_type_id
+          )
+          .then(() => {
+            res.writeHead(200, {
+              "Content-Type": "application/json; charset=utf-8"
+            });
+            return res.end(
+              JSON.stringify({
+                status: "OK",
+                msg: "Lưu kết quả gọi ra thành công"
+              })
+            );
+          });
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-        db.runSql(sql, params).then(goi_ra => {
-            return support._updateLastCallout4Bike(
-                    callout.xe_id,
-                    goi_ra.lastID,
-                    callout.muc_dich_goi_ra_id,
-                    callout.ket_qua_goi_ra_id,
-                    callout.note,
-                    callout.sms_type_id
-            ).then(() => {
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi ra thành công'}))
-            })
-        })
-        .catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        })
-    }
+  addCallin(req, res, next) {
+    let callout = req.json_data;
 
-    addCallin(req, res, next) {
-        let callout = req.json_data
-
-        let sql = `INSERT INTO goi_den (
+    let sql = `INSERT INTO goi_den (
                             xe_id,
                             khach_hang_id,
                             call_datetime,
@@ -846,35 +1123,53 @@ class Handler {
                         strftime('%s', datetime('now', 'localtime')),
                         ?,
                         ?
-                    )`
-        let params = [
+                    )`;
+    let params = [
+      callout.xe_id,
+      callout.khach_hang_id,
+      callout.content,
+      callout.note
+    ];
+
+    db.runSql(sql, params)
+      .then(goi_ra => {
+        return support
+          ._updateLastCallout4Bike(
             callout.xe_id,
-            callout.khach_hang_id,
-            callout.content,
+            goi_ra.lastID,
+            callout.muc_dich_goi_ra_id,
+            callout.ket_qua_goi_ra_id,
             callout.note
-        ]
+          )
+          .then(() => {
+            res.writeHead(200, {
+              "Content-Type": "application/json; charset=utf-8"
+            });
+            return res.end(
+              JSON.stringify({
+                status: "OK",
+                msg: "Lưu kết quả gọi đến thành công"
+              })
+            );
+          });
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-        db.runSql(sql, params).then(goi_ra => {
-            return support._updateLastCallout4Bike(callout.xe_id, goi_ra.lastID, callout.muc_dich_goi_ra_id, callout.ket_qua_goi_ra_id, callout.note).then(() => {
-                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Lưu kết quả gọi đến thành công'}))
-            })
-        })
-        .catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        })
-    }
+  addService(req, res, next) {
+    let service = req.json_data;
+    let total_price = service.equips.reduce((result, e, idx) => {
+      result += Number(e.price);
+      return result;
+    }, 0);
 
-    addService(req, res, next) {
-        let service = req.json_data
-        let total_price = service.equips.reduce((result, e, idx) => {
-            result += Number(e.price)
-            return result
-        }, 0)
+    service.total_price = total_price + Number(service.price_wage);
 
-        service.total_price = total_price + Number(service.price_wage)
-
-        let sql = `INSERT INTO dich_vu (
+    let sql = `INSERT INTO dich_vu (
                         khach_hang_id,
                         cua_hang_id,
                         loai_bao_duong_id,
@@ -915,52 +1210,67 @@ class Handler {
                         ?,
                         ?,
                         ?
-                    )`
-        let params = [
-            service.khach_hang_id,
-            service.cua_hang_id,
-            service.loai_bao_duong_id,
-            service.xe_id,
-            service.in_date,
-            service.out_date,
-            service.reception_staff,
-            service.repaire_staff_1,
-            service.repaire_staff_2,
-            service.check_staff,
-            service.customer_require,
-            service.is_keep_old_equip,
-            service.offer_1,
-            service.offer_2,
-            service.offer_3,
-            JSON.stringify(service.equips),
-            service.price_wage,
-            service.total_price
-        ]
+                    )`;
+    let params = [
+      service.khach_hang_id,
+      service.cua_hang_id,
+      service.loai_bao_duong_id,
+      service.xe_id,
+      service.in_date,
+      service.out_date,
+      service.reception_staff,
+      service.repaire_staff_1,
+      service.repaire_staff_2,
+      service.check_staff,
+      service.customer_require,
+      service.is_keep_old_equip,
+      service.offer_1,
+      service.offer_2,
+      service.offer_3,
+      JSON.stringify(service.equips),
+      service.price_wage,
+      service.total_price
+    ];
 
-        db.runSql(sql, params).then(async (dich_vu) => {
-            sql = `UPDATE xe
+    db.runSql(sql, params)
+      .then(async dich_vu => {
+        sql = `UPDATE xe
                     SET last_dich_vu_id=?,
                         last_loai_bao_duong_id=?,
                         last_service_date=strftime('%s', datetime('now', 'localtime'))
-                    WHERE id=?`
+                    WHERE id=?`;
 
-            await db.runSql(sql, [dich_vu.lastID, service.loai_bao_duong_id, service.xe_id])
-            await support._updateSmsSchedule(service.xe_id)
+        await db.runSql(sql, [
+          dich_vu.lastID,
+          service.loai_bao_duong_id,
+          service.xe_id
+        ]);
+        await support._updateSmsSchedule(service.xe_id);
 
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'Lưu thông tin dịch vụ thành công'}))
-        })
-        .catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
-        })
-    }
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        return res.end(
+          JSON.stringify({
+            status: "OK",
+            msg: "Lưu thông tin dịch vụ thành công"
+          })
+        );
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    getServices(req, res, next) {
-        let xe_id = req.query.xe_id
+  getServices(req, res, next) {
+    let xe_id = req.query.xe_id;
 
-        if (!xe_id || xe_id=='undefined') xe_id = ''
+    if (!xe_id || xe_id == "undefined") xe_id = "";
 
-        db.getRsts(`select
+    db.getRsts(
+      `select
                         xe_id,
                         bill_number,
                         km_number,
@@ -985,24 +1295,26 @@ class Handler {
                         note
                     from  dich_vu where xe_id=?
                     order by service_date`,
-                    [xe_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+      [xe_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    getService(req, res, next) {
-        let dich_vu_id = req.params.dich_vu_id
+  getService(req, res, next) {
+    let dich_vu_id = req.params.dich_vu_id;
 
-        db.getRst(`select
+    db.getRst(
+      `select
                         xe_id,
                         bill_number,
                         km_number,
@@ -1030,26 +1342,28 @@ class Handler {
                             INNER JOIN dm_phu_tung ON phu_tung.phu_tung_id=dm_phu_tung.id
                     WHERE dich_vu.id=?
                     GROUP BY dich_vu.id`,
-                    [dich_vu_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
-                , (key, value) => {
-                    if (value === null) { return undefined; }
-                    return value;
-                }
-            ));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+      [dich_vu_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    getCallouts(req, res, next) {
-        let xe_id = req.query.xe_id
+  getCallouts(req, res, next) {
+    let xe_id = req.query.xe_id;
 
-        if (!xe_id || xe_id=='undefined') xe_id = ''
+    if (!xe_id || xe_id == "undefined") xe_id = "";
 
-        db.getRsts(`select
+    db.getRsts(
+      `select
                         (select max(name) from dm_muc_dich_goi_ra where id=goi_ra.muc_dich_goi_ra_id) muc_dich_goi_ra,
                         (select max(name) from dm_ket_qua_goi_ra where id=goi_ra.ket_qua_goi_ra_id) ket_qua_goi_ra,
                         note,
@@ -1058,37 +1372,50 @@ class Handler {
                     from  goi_ra
                     where xe_id=?
                     order by goi_ra.call_date`,
-                    [xe_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+      [xe_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 
-    getCallins(req, res, next) {
-        let xe_id = req.query.xe_id
+  getCallins(req, res, next) {
+    let xe_id = req.query.xe_id;
 
-        if (!xe_id || xe_id=='undefined') xe_id = ''
+    if (!xe_id || xe_id == "undefined") xe_id = "";
 
-        db.getRsts(`select
+    db.getRsts(
+      `select
                         content,
                         note,
                         strftime ('%d/%m/%Y %H:%M', call_datetime, 'unixepoch') AS call_datetime
                     from  goi_den
                     where xe_id=?
                     order by goi_den.call_datetime`,
-                    [xe_id]
-        ).then(row => {
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
-        }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+      [xe_id]
+    )
+      .then(row => {
+        res.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8"
         });
-    }
+        return res.end(JSON.stringify(row));
+      })
+      .catch(err => {
+        return res
+          .status(400)
+          .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      });
+  }
 }
 
 module.exports = {
-    Handler: new Handler()
+  Handler: new Handler()
 };

@@ -16,14 +16,14 @@ class Handler {
             ORDER BY name`
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
+            return res.end(JSON.stringify(row
                 , (key, value) => {
                     if (value === null) { return undefined; }
                     return value;
                 }
             ));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -34,9 +34,9 @@ class Handler {
             ORDER BY province`
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -49,14 +49,14 @@ class Handler {
             ORDER BY name"
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
+            return res.end(JSON.stringify(row
                 , (key, value) => {
                     if (value === null) { return undefined; }
                     return value;
                 }
             ));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -70,14 +70,14 @@ class Handler {
             ORDER BY name"
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
+            return res.end(JSON.stringify(row
                 , (key, value) => {
                     if (value === null) { return undefined; }
                     return value;
                 }
             ));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -87,14 +87,14 @@ class Handler {
             ORDER BY name"
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
+            return res.end(JSON.stringify(row
                 , (key, value) => {
                     if (value === null) { return undefined; }
                     return value;
                 }
             ));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -118,9 +118,9 @@ class Handler {
 
         db.getRsts(sql).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -144,14 +144,14 @@ class Handler {
                     ]
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
+            return res.end(JSON.stringify(row
                 , (key, value) => {
                     if (value === null) { return undefined; }
                     return value;
                 }
             ));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -159,14 +159,14 @@ class Handler {
         db.getRsts("select id,name from  dm_ket_qua_goi_ra where status is null order by order_"
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
+            return res.end(JSON.stringify(row
                 , (key, value) => {
                     if (value === null) { return undefined; }
                     return value;
                 }
             ));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -179,14 +179,14 @@ class Handler {
                     ORDER BY id`, []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
+            return res.end(JSON.stringify(row
                 , (key, value) => {
                     if (value === null) { return undefined; }
                     return value;
                 }
             ));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -197,14 +197,14 @@ class Handler {
                     ORDER BY name_no_sign`, []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
+            return res.end(JSON.stringify(row
                 , (key, value) => {
                     if (value === null) { return undefined; }
                     return value;
                 }
             ));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -215,14 +215,14 @@ class Handler {
                     ORDER BY id`, []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
+            return res.end(JSON.stringify(row
                 , (key, value) => {
                     if (value === null) { return undefined; }
                     return value;
                 }
             ));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -232,14 +232,14 @@ class Handler {
                     ORDER BY id", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row
+            return res.end(JSON.stringify(row
                 , (key, value) => {
                     if (value === null) { return undefined; }
                     return value;
                 }
             ));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -247,9 +247,9 @@ class Handler {
         db.getRsts("select id, name from dm_dich_vu order by name", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -257,9 +257,9 @@ class Handler {
         db.getRsts("select id, name from dm_loai_chien_dich order by order_", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -267,9 +267,9 @@ class Handler {
         db.getRsts("select id, name FROM dm_muc_dich_goi_ra WHERE ORDER BY order_", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -277,9 +277,9 @@ class Handler {
         db.getRsts("select id, name from dm_thai_do_nhan_vien", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -287,9 +287,9 @@ class Handler {
         db.getRsts("select id, name from dm_ma_loai_xe ORDER BY name", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -297,9 +297,9 @@ class Handler {
         db.getRsts("select id, name from dm_nghe_nghiep ORDER BY name", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -307,9 +307,9 @@ class Handler {
         db.getRsts("select id, name from dm_mau_xe ORDER BY name", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -317,9 +317,9 @@ class Handler {
         db.getRsts("select id, type, content from sms_config ORDER BY id", []
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 }

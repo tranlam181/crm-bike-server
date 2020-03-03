@@ -288,9 +288,9 @@ class Handler {
 
         db.getRsts(sql, params).then(result => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify(result))
+            return res.end(JSON.stringify(result))
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
 
@@ -357,9 +357,9 @@ class Handler {
 
         db.getRsts(sql, params).then(result => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify(result))
+            return res.end(JSON.stringify(result))
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
 
@@ -414,9 +414,9 @@ class Handler {
 
         db.getRsts(sql, params).then(result => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify(result))
+            return res.end(JSON.stringify(result))
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
 
@@ -490,9 +490,9 @@ class Handler {
 
         db.getRsts(sql, params).then(result => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify(result))
+            return res.end(JSON.stringify(result))
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
 
@@ -534,9 +534,9 @@ class Handler {
 
         db.getRsts(sql, params).then(result => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify(result))
+            return res.end(JSON.stringify(result))
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
 
@@ -592,9 +592,9 @@ class Handler {
 
         db.getRsts(sql, params).then(result => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify(result))
+            return res.end(JSON.stringify(result))
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
 
@@ -626,9 +626,9 @@ class Handler {
 
         db.getRsts(sql, params).then(result => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify(result))
+            return res.end(JSON.stringify(result))
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
 
@@ -723,9 +723,9 @@ class Handler {
 
         db.getRsts(sql, params).then(result => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify(result))
+            return res.end(JSON.stringify(result))
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         })
     }
 
@@ -743,9 +743,9 @@ class Handler {
             await syncServiceReportDaily(date_sta, date_end)
 
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({"status": "OK", "msg": "Tổng hợp báo cáo thành công"}))
+            return res.end(JSON.stringify({"status": "OK", "msg": "Tổng hợp báo cáo thành công"}))
         } catch (err) {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         }
     }
 }

@@ -206,10 +206,9 @@ class Handler {
 
     if (check_rs.count_row > 0) {
       res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(
+      return res.end(
         JSON.stringify({ status: "NOK", msg: "Chiến dịch này đã tồn tại" })
       );
-      return;
     }
 
     sql = `INSERT INTO chien_dich(
@@ -242,12 +241,12 @@ class Handler {
         res.writeHead(200, {
           "Content-Type": "application/json; charset=utf-8"
         });
-        res.end(
+        return res.end(
           JSON.stringify({ status: "OK", msg: "Lưu chiến dịch thành công" })
         );
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -300,13 +299,13 @@ class Handler {
             res.writeHead(200, {
               "Content-Type": "application/json; charset=utf-8"
             });
-            res.end(
+            return res.end(
               JSON.stringify({ status: "OK", msg: "Lưu ý kiến KH thành công" })
             );
           });
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -329,13 +328,13 @@ class Handler {
 
     db.getRsts(sql, [userInfo.cua_hang_id, userInfo.cua_hang_id])
       .then(row => {
-        res.writeHead(200, {
+        return res.writeHead(200, {
           "Content-Type": "application/json; charset=utf-8"
         });
         res.end(JSON.stringify(row));
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -387,10 +386,10 @@ class Handler {
         res.writeHead(200, {
           "Content-Type": "application/json; charset=utf-8"
         });
-        res.end(JSON.stringify(row));
+        return res.end(JSON.stringify(row));
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -409,12 +408,12 @@ class Handler {
         res.writeHead(200, {
           "Content-Type": "application/json; charset=utf-8"
         });
-        res.end(
+        return res.end(
           JSON.stringify({ status: "OK", msg: "Xóa chiến dịch thành công" })
         );
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -460,7 +459,7 @@ class Handler {
         res.writeHead(400, {
           "Content-Type": "application/json; charset=utf-8"
         });
-        res.end(
+        return res.end(
           JSON.stringify({
             status: "NOK",
             msg: strategy_bike_result.msg,
@@ -471,9 +470,11 @@ class Handler {
       }
 
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ status: "OK", msg: "Thành công" }));
+      return res.end(JSON.stringify({ status: "OK", msg: "Thành công" }));
     } catch (err) {
-      res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      return res
+        .status(400)
+        .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
     }
   }
 
@@ -537,10 +538,10 @@ class Handler {
         res.writeHead(200, {
           "Content-Type": "application/json; charset=utf-8"
         });
-        res.end(JSON.stringify(result));
+        return res.end(JSON.stringify(result));
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -597,13 +598,13 @@ class Handler {
 
     db.getRsts(sql, params)
       .then(result => {
-        res.writeHead(200, {
+        return res.writeHead(200, {
           "Content-Type": "application/json; charset=utf-8"
         });
         res.end(JSON.stringify(result));
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -622,11 +623,13 @@ class Handler {
       await syncServiceReportDaily(chien_dich_id, date_sta, date_end);
 
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(
+      return res.end(
         JSON.stringify({ status: "OK", msg: "Tổng hợp báo cáo thành công" })
       );
     } catch (err) {
-      res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      return res
+        .status(400)
+        .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
     }
   }
 
@@ -661,10 +664,10 @@ class Handler {
         res.writeHead(200, {
           "Content-Type": "application/json; charset=utf-8"
         });
-        res.end(JSON.stringify(result));
+        return res.end(JSON.stringify(result));
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });

@@ -18,8 +18,7 @@ class Handler {
 
         if (result.count >= 1) {
             res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'NOK', msg:`User ${user.user_name} đã tồn tại rồi`}))
-            return
+            return res.end(JSON.stringify({status:'NOK', msg:`User ${user.user_name} đã tồn tại rồi`}))
         }
 
         bcrypt.hash(user.password, 10, function (err, hash) {
@@ -30,10 +29,10 @@ class Handler {
             ]
             db.runSql(sql, params).then(result => {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:'Đăng ký user thành công', count:result.changes}))
+                return res.end(JSON.stringify({status:'OK', msg:'Đăng ký user thành công', count:result.changes}))
             })
             .catch(err => {
-                res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+                return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
             })
         })
     }
@@ -58,8 +57,7 @@ class Handler {
 
         if (!userDB || !userDB.id) {
             res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'NOK', msg:`User ${user.user_name} không tồn tại`}))
-            return
+            return res.end(JSON.stringify({status:'NOK', msg:`User ${user.user_name} không tồn tại`}))
         }
 
         // To check a password
@@ -79,18 +77,16 @@ class Handler {
                 db.getRst(sql, params)
 
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'OK', msg:`User ${user.user_name} login thành công`, token: token, user: userDB}))
-                return
+                return res.end(JSON.stringify({status:'OK', msg:`User ${user.user_name} login thành công`, token: token, user: userDB}))
             } else {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-                res.end(JSON.stringify({status:'NOK', msg:`User ${user.user_name} mật khẩu không đúng`}))
-                return
+                return res.end(JSON.stringify({status:'NOK', msg:`User ${user.user_name} mật khẩu không đúng`}))
             }
         })
     }
 
     logout(req, res, next) {
-        res.status(200).end(JSON.stringify({status:'OK', msg:`User ${req.user.user_name} logout thành công`}))
+        return res.status(200).end(JSON.stringify({status:'OK', msg:`User ${req.user.user_name} logout thành công`}))
     }
 
     getUsers(req, res, next) {
@@ -99,9 +95,9 @@ class Handler {
             ORDER BY nhom_id, id`
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -156,9 +152,9 @@ class Handler {
             }
 
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-            res.end(JSON.stringify({status:'OK', msg:'Lưu cấu hình thành công'}))
+            return res.end(JSON.stringify({status:'OK', msg:'Lưu cấu hình thành công'}))
         } catch(err) {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         }
     }
 }

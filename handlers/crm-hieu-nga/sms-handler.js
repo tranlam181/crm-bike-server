@@ -54,10 +54,10 @@ class Handler {
     )
       .then(row => {
         res.writeHead(200, UTILS.RESPONSE_HEADER);
-        res.end(JSON.stringify(row));
+        return res.end(JSON.stringify(row));
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -88,7 +88,9 @@ class Handler {
     }
 
     res.writeHead(200, UTILS.RESPONSE_HEADER);
-    res.end(JSON.stringify({ status: "OK", msg: "Lưu cấu hình thành công" }));
+    return res.end(
+      JSON.stringify({ status: "OK", msg: "Lưu cấu hình thành công" })
+    );
   }
 
   sendSmsRequest(req, res, next) {
@@ -119,12 +121,12 @@ class Handler {
             )
             .then(() => {
               res.writeHead(200, UTILS.RESPONSE_HEADER);
-              res.end(JSON.stringify({ status: "OK", msg: rs.msg }));
+              return res.end(JSON.stringify({ status: "OK", msg: rs.msg }));
             });
         });
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -206,7 +208,7 @@ class Handler {
         }
 
         res.writeHead(200, UTILS.RESPONSE_HEADER);
-        res.end(
+        return res.end(
           JSON.stringify({
             status: "OK",
             msg: "Đã nhắn sms xong",
@@ -215,7 +217,7 @@ class Handler {
         );
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -327,10 +329,10 @@ class Handler {
     db.getRsts(sql, params)
       .then(row => {
         res.writeHead(200, UTILS.RESPONSE_HEADER);
-        res.end(JSON.stringify(row));
+        return res.end(JSON.stringify(row));
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });
@@ -357,10 +359,10 @@ class Handler {
     )
       .then(row => {
         res.writeHead(200, UTILS.RESPONSE_HEADER);
-        res.end(JSON.stringify(row));
+        return res.end(JSON.stringify(row));
       })
       .catch(err => {
-        res
+        return res
           .status(400)
           .end(JSON.stringify(err, Object.getOwnPropertyNames(err)));
       });

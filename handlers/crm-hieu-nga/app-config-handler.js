@@ -7,9 +7,6 @@
  *
  */
 const db = require('../../db/sqlite3/crm-hieu-nga-dao')
-const jwtConfig = require('../../jwt/jwt-config')
-const jwt = require('jsonwebtoken')
-const {removeVietnameseFromString} = require('../../utils/utils')
 
 class Handler {
     getAppConfig(req, res, next) {
@@ -18,9 +15,9 @@ class Handler {
             ORDER BY id`
         ).then(row => {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(row));
+            return res.end(JSON.stringify(row));
         }).catch(err => {
-            res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            return res.status(400).end(JSON.stringify(err, Object.getOwnPropertyNames(err)))
         });
     }
 
@@ -47,7 +44,7 @@ class Handler {
         }
 
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify({status:'OK', msg:'Lưu cấu hình thành công'}))
+        return res.end(JSON.stringify({status:'OK', msg:'Lưu cấu hình thành công'}))
     }
 }
 
