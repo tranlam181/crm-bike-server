@@ -25,23 +25,28 @@ var sendSms = (ipphone, number, content, link_sms_3c, secret_3c) => {
 
     resol({ status: "OK", msg: "Nhắn thành công" });
 
-    // request.post(
+    // var smsReq = request.post(
     //   link_sms_3c,
     //   {
     //     json: {
     //       token: token
-    //     }
+    //     },
+    //     timeout: 5000
     //   },
     //   (error, res, body) => {
     //     if (error) {
-    //       reject(error);
+    //       return reject(error);
     //     } else if (body.code == "errors") {
-    //       reject({ status: "NOK", msg: body.message });
+    //       return reject({ status: "NOK", msg: body.message });
     //     } else {
-    //       resol({ status: "OK", msg: body.message });
+    //       return resol({ status: "OK", msg: body.message });
     //     }
     //   }
     // );
+
+    // smsReq.on("error", err => {
+    //   return reject(err);
+    // });
   });
 };
 

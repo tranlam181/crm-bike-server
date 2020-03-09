@@ -110,3 +110,19 @@ function main(isHttp, isHttps) {
 
 const isHttps = false
 main(!isHttps && 9237, isHttps && 9237);
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM');
+  process.exit(1);
+});
+
+process.on('SIGINT', ()=> {
+  console.log('SIGINT');
+  process.exit(0);
+});
+
+process.on('uncaughtException', err => {
+  console.log('Uncaught exception');
+  console.error(err);
+  process.exit(1);
+});

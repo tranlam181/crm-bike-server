@@ -1,9 +1,9 @@
 "use strict"
 /**
- * version 3.1 
- * doi tuong sqlite-dao - cuong.dq 
- * 
- * repaired 20190105: col.value !=undefined && !=null 
+ * version 3.1
+ * doi tuong sqlite-dao - cuong.dq
+ *
+ * repaired 20190105: col.value !=undefined && !=null
  */
 const sqlite3 = require('sqlite3').verbose();
 const isSilence = false;
@@ -20,8 +20,8 @@ class SQLiteDAO {
   }
 
   /**
-   * 
-   * @param {*} table 
+   *
+   * @param {*} table
    * var table ={
    *              name: 'LOGIN',
    *              cols: [
@@ -51,8 +51,8 @@ class SQLiteDAO {
 
   //insert
   /**
-   * 
-   * @param {*} insertTable 
+   *
+   * @param {*} insertTable
    * var insertTable={
    *                  name:'tablename',
    *                  cols:[{
@@ -60,7 +60,7 @@ class SQLiteDAO {
    *                        value:'1'
    *                        }]
    *                  }
-   * 
+   *
    */
   insert(insertTable) {
     let sql = 'INSERT INTO ' + insertTable.name
@@ -88,9 +88,9 @@ class SQLiteDAO {
     return this.runSql(sql, params);
   }
 
-  //update 
+  //update
   /**
-   * 
+   *
    * @param {*} updateTable
    *  var updateTable={
    *                  name:'tablename',
@@ -140,7 +140,7 @@ class SQLiteDAO {
   //delete
   /**
    * Ham xoa bang ghi
-   * @param {*} id 
+   * @param {*} id
    */
   delete(deleteTable) {
     let sql = 'DELETE FROM ' + deleteTable.name;
@@ -163,8 +163,8 @@ class SQLiteDAO {
 
   //
   /**
-   *lenh select, update, delete su dung keu json 
-   * @param {*} selectTable 
+   *lenh select, update, delete su dung keu json
+   * @param {*} selectTable
    */
   select(selectTable) {
     let sql = 'SELECT * FROM ' + selectTable.name;
@@ -199,8 +199,8 @@ class SQLiteDAO {
   //lay 1 bang ghi dau tien cua select
   /**
    * lay 1 bang ghi
-   * @param {*} sql 
-   * @param {*} params 
+   * @param {*} sql
+   * @param {*} params
    */
   getRst(sql, params = []) {
     return new Promise((resolve, reject) => {
@@ -218,8 +218,8 @@ class SQLiteDAO {
 
   /**
    * Lay tat ca cac bang ghi
-   * @param {*} sql 
-   * @param {*} params 
+   * @param {*} sql
+   * @param {*} params
    */
   getRsts(sql, params = []) {
     return new Promise((resolve, reject) => {
@@ -236,8 +236,8 @@ class SQLiteDAO {
   //cac ham va thu tuc duoc viet duoi nay
   /**
    * Ham thuc thi lenh sql va cac tham so
-   * @param {*} sql 
-   * @param {*} params 
+   * @param {*} sql
+   * @param {*} params
    */
   runSql(sql, params = []) {  //Hàm do ta tự đặt tên gồm 2 tham số truyền vào.
     return new Promise((resolve, reject) => {   //Tạo mới một Promise thực thi câu lệnh sql
@@ -254,4 +254,4 @@ class SQLiteDAO {
 
 }
 
-module.exports = SQLiteDAO; 
+module.exports = SQLiteDAO;
