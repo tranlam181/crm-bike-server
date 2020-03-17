@@ -29,7 +29,7 @@ var login3C = (ipphone, secret_3c) => {
         } else if (body.code == "errors") {
           return reject({ status: "NOK", msg: body.message });
         } else {
-          return resol({ status: "OK", msg: body.message });
+          return resol({ status: "OK", data: body });
         }
       }
     );
