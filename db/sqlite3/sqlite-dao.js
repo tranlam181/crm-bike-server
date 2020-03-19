@@ -1,22 +1,22 @@
-"use strict"
+"use strict";
 /**
  * version 3.1
  * doi tuong sqlite-dao - cuong.dq
  *
  * repaired 20190105: col.value !=undefined && !=null
  */
-const sqlite3 = require('sqlite3').verbose();
+const sqlite3 = require("sqlite3").verbose();
 const isSilence = false;
 
 class SQLiteDAO {
   constructor(dbFilePath) {
-    this.db = new sqlite3.Database(dbFilePath, (err) => {
+    this.db = new sqlite3.Database(dbFilePath, err => {
       if (err) {
-        console.error('Could NOT connect to database ' + dbFilePath, err);
+        console.error("Could NOT connect to database " + dbFilePath, err);
       } else {
-        console.log('Connected to database ' + dbFilePath);
+        console.log("Connected to database " + dbFilePath);
       }
-    })
+    });
   }
 
   /**
@@ -35,19 +35,18 @@ class SQLiteDAO {
    *            }
    */
   createTable(table) {
-    let sql = 'CREATE TABLE IF NOT EXISTS ' + table.name + ' (';
+    let sql = "CREATE TABLE IF NOT EXISTS " + table.name + " (";
     let i = 0;
     for (var col of table.cols) {
       if (i++ == 0) {
-        sql += col.name + ' ' + col.type + ' ' + col.option_key;
+        sql += col.name + " " + col.type + " " + col.option_key;
       } else {
-        sql += ', ' + col.name + ' ' + col.type + ' ' + col.option_key;
+        sql += ", " + col.name + " " + col.type + " " + col.option_key;
       }
     }
-    sql += ')';
+    sql += ")";
     return this.runSql(sql);
   }
-
 
   //insert
   /**
@@ -63,27 +62,26 @@ class SQLiteDAO {
    *
    */
   insert(insertTable) {
-    let sql = 'INSERT INTO ' + insertTable.name
-      + ' ('
+    let sql = "INSERT INTO " + insertTable.name + " (";
     let i = 0;
-    let sqlNames = '';
-    let sqlValues = '';
+    let sqlNames = "";
+    let sqlValues = "";
     let params = [];
     for (let col of insertTable.cols) {
       if (col.value != undefined && col.value != null) {
         params.push(col.value);
         if (i++ == 0) {
           sqlNames += col.name;
-          sqlValues += '?';
+          sqlValues += "?";
         } else {
-          sqlNames += ', ' + col.name;
-          sqlValues += ', ?';
+          sqlNames += ", " + col.name;
+          sqlValues += ", ?";
         }
       }
     }
 
-    sql += sqlNames + ') VALUES (';
-    sql += sqlValues + ')';
+    sql += sqlNames + ") VALUES (";
+    sql += sqlValues + ")";
 
     return this.runSql(sql, params);
   }
@@ -105,7 +103,7 @@ class SQLiteDAO {
    *                  }
    */
   update(updateTable) {
-    let sql = 'UPDATE ' + updateTable.name + ' SET ';
+    let sql = "UPDATE " + updateTable.name + " SET ";
 
     let i = 0;
     let params = [];
@@ -114,9 +112,9 @@ class SQLiteDAO {
         //neu gia tri khong phai undefined moi duoc thuc thi
         params.push(col.value);
         if (i++ == 0) {
-          sql += col.name + '= ?';
+          sql += col.name + "= ?";
         } else {
-          sql += ', ' + col.name + '= ?';
+          sql += ", " + col.name + "= ?";
         }
       }
     }
@@ -126,15 +124,15 @@ class SQLiteDAO {
       if (col.value != undefined && col.value != null) {
         params.push(col.value);
         if (i++ == 0) {
-          sql += ' WHERE ' + col.name + '= ?';
+          sql += " WHERE " + col.name + "= ?";
         } else {
-          sql += ' AND ' + col.name + '= ?';
+          sql += " AND " + col.name + "= ?";
         }
       } else {
-        sql += ' WHERE 1=2'; //menh de where sai thi khong cho update Bao toan du lieu
+        sql += " WHERE 1=2"; //menh de where sai thi khong cho update Bao toan du lieu
       }
     }
-    return this.runSql(sql, params)
+    return this.runSql(sql, params);
   }
 
   //delete
@@ -143,22 +141,22 @@ class SQLiteDAO {
    * @param {*} id
    */
   delete(deleteTable) {
-    let sql = 'DELETE FROM ' + deleteTable.name;
+    let sql = "DELETE FROM " + deleteTable.name;
     let i = 0;
     let params = [];
     for (let col of deleteTable.wheres) {
       if (col.value != undefined && col.value != null) {
         params.push(col.value);
         if (i++ == 0) {
-          sql += ' WHERE ' + col.name + '= ?';
+          sql += " WHERE " + col.name + "= ?";
         } else {
-          sql += ' AND ' + col.name + '= ?';
+          sql += " AND " + col.name + "= ?";
         }
       } else {
-        sql += ' WHERE 1=2'; //dam bao khong bi xoa toan bo so lieu khi khai bao sai
+        sql += " WHERE 1=2"; //dam bao khong bi xoa toan bo so lieu khi khai bao sai
       }
     }
-    return this.runSql(sql, params)
+    return this.runSql(sql, params);
   }
 
   //
@@ -167,34 +165,34 @@ class SQLiteDAO {
    * @param {*} selectTable
    */
   select(selectTable) {
-    let sql = 'SELECT * FROM ' + selectTable.name;
+    let sql = "SELECT * FROM " + selectTable.name;
     let i = 0;
     let params = [];
-    let sqlNames = '';
+    let sqlNames = "";
     for (let col of selectTable.cols) {
       if (i++ == 0) {
         sqlNames += col.name;
       } else {
-        sqlNames += ', ' + col.name;
+        sqlNames += ", " + col.name;
       }
     }
-    sql = 'SELECT ' + sqlNames + ' FROM ' + selectTable.name;
+    sql = "SELECT " + sqlNames + " FROM " + selectTable.name;
     i = 0;
     if (selectTable.wheres) {
       for (let col of selectTable.wheres) {
         if (col.value != undefined && col.value != null) {
           params.push(col.value);
           if (i++ == 0) {
-            sql += ' WHERE ' + col.name + '= ?';
+            sql += " WHERE " + col.name + "= ?";
           } else {
-            sql += ' AND ' + col.name + '= ?';
+            sql += " AND " + col.name + "= ?";
           }
         }
       }
     }
     //console.log(sql);
     //console.log(params);
-    return this.getRst(sql, params)
+    return this.getRst(sql, params);
   }
   //lay 1 bang ghi dau tien cua select
   /**
@@ -208,12 +206,12 @@ class SQLiteDAO {
         if (err) {
           // console.log('Error running sql: ' + sql)
           // console.log(err)
-          reject(err)
+          reject(err);
         } else {
-          resolve(row)
+          resolve(row);
         }
-      })
-    })
+      });
+    });
   }
 
   /**
@@ -225,12 +223,12 @@ class SQLiteDAO {
     return new Promise((resolve, reject) => {
       this.db.all(sql, params, (err, result) => {
         if (err) {
-          reject(err)
+          reject(err);
         } else {
-          resolve(result)
+          resolve(result);
         }
-      })
-    })
+      });
+    });
   }
 
   //cac ham va thu tuc duoc viet duoi nay
@@ -239,19 +237,23 @@ class SQLiteDAO {
    * @param {*} sql
    * @param {*} params
    */
-  runSql(sql, params = []) {  //Hàm do ta tự đặt tên gồm 2 tham số truyền vào.
-    return new Promise((resolve, reject) => {   //Tạo mới một Promise thực thi câu lệnh sql
-      this.db.run(sql, params, function (err) {   //this.db sẽ là biến đã kết nối csdl, ta gọi hàm run của this.db chính là gọi hàm run của sqlite3 trong NodeJS hỗ trợ (1 trong 3 hàm như đã nói ở trên)
-        if (err) {   //Trường hợp lỗi
-          if (!isSilence) console.log('Could NOT excute: ' + sql)
-          reject(err)
-        } else {   //Trường hợp chạy query thành công
-          resolve({lastID: this.lastID, changes: this.changes})   //Trả về kết quả là một object có id lấy từ DB.
+  runSql(sql, params = []) {
+    //Hàm do ta tự đặt tên gồm 2 tham số truyền vào.
+    return new Promise((resolve, reject) => {
+      //Tạo mới một Promise thực thi câu lệnh sql
+      this.db.run(sql, params, function(err) {
+        //this.db sẽ là biến đã kết nối csdl, ta gọi hàm run của this.db chính là gọi hàm run của sqlite3 trong NodeJS hỗ trợ (1 trong 3 hàm như đã nói ở trên)
+        if (err) {
+          //Trường hợp lỗi
+          if (!isSilence) console.log("Could NOT excute: " + sql);
+          reject(err);
+        } else {
+          //Trường hợp chạy query thành công
+          resolve({ lastID: this.lastID, changes: this.changes }); //Trả về kết quả là một object có id lấy từ DB.
         }
-      })
-    })
+      });
+    });
   }
-
 }
 
 module.exports = SQLiteDAO;
