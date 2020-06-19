@@ -834,7 +834,7 @@ class Handler {
                 SET last_call_out_date = strftime ('%s', datetime ('now', 'localtime'))
                     , next_book_date = strftime ('%s', ?)
                     , goi_ra_id = NULL
-                    , ket_qua_goi_ra_id = NULL,
+                    , ket_qua_goi_ra_id = NULL
                     , update_user = ?
                     , update_datetime = strftime('%s', datetime('now', 'localtime'))
                 WHERE id = (SELECT MAX (khach_hang_id)

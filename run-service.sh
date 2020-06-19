@@ -34,11 +34,14 @@ stop()
 	else
 		echo "service not running"
 	fi
+	
+	RUNNING=0 
 }
 
 restart()
 {
 	stop
+	sleep 2 
 	start
 }
 
