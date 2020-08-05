@@ -20,9 +20,8 @@ function main(isHttp, isHttps) {
   //web tinh
   // app.use(express.static(__dirname + '/www'));
   app.use(express.static("www"));
-  app.use("/crm", express.static(__dirname + "/platforms/browser/www"));
+  app.use("/crm", express.static(__dirname + "/www"));
   app.use("/crm/hieu-nga", express.static(__dirname + "/www/hieu-nga"));
-  app.use("/swagger-ui", express.static(__dirname + "/www"));
 
   //CHONG TAN CONG DDDOS
   //ngan chan truy cap ddos tra ket qua cho user neu truy cap tan suat lon
